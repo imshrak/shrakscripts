@@ -5,7 +5,7 @@ A reusable Roblox UI library with the ShrakScripts dark menu, sliding sidebar hi
 ## Quick start
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/imshrak/shrakscripts/main/ui/Library.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/imshrak/shrakscripts/refs/heads/main/ui/Library.lua"))()
 local Window = Library:CreateWindow({ Id = "MyScript", Title = "My Script" })
 local Main = Window:AddTab("Main", "zap")
 Main:AddSection("Features")
