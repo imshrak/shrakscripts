@@ -8,9 +8,21 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
     group.Position = content.Position
     group.BackgroundTransparency = 1
     group.BorderSizePixel = 0
+    group.Visible = false
     group.Parent = window
-    content.Position = UDim2.new()
-    content.Parent = group
+
+    local function directContent()
+        content.Parent = window
+        content.Position = group.Position
+        group.Visible = false
+    end
+    local function fadeContent()
+        if content.Parent ~= group then
+            content.Parent = group
+            content.Position = UDim2.new()
+        end
+        group.Visible = true
+    end
 
     local logo = button:FindFirstChild("LauncherLogo") or button:FindFirstChildWhichIsA("TextLabel")
     local ghost = logo:Clone()
@@ -61,6 +73,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
         content.Visible = true
         window.Visible = true
         button.Visible = false
+        directContent()
     else
         closedAppearance()
         group.GroupTransparency = 1
@@ -68,6 +81,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
         window.Visible = false
         button.Visible = true
         popupVisible(false)
+        directContent()
     end
 
     local controller = {}
@@ -81,6 +95,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
         table.clear(tweens)
         local wasClosed = state == "closed"
         state = open and "opening" or "closing"
+        fadeContent()
         button.Visible = false
         if open and wasClosed then
             closedAppearance()
@@ -120,12 +135,14 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
                 group.GroupTransparency = 0
                 content.Visible = true
                 popupVisible(true)
+                directContent()
             else
                 state = "closed"
                 closedAppearance()
                 content.Visible = false
                 window.Visible = false
                 button.Visible = true
+                directContent()
             end
         end)
     end
@@ -134,6 +151,33 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
     end
     function controller.IsOpen()
         return desired
+    end
+    function controller.GetExpandedSize() return expandedSize end
+    function controller.GetExpandedPosition() return state == "open" and window.Position or openPosition end
+    function controller.CanDrag() return state == "open" end
+    function controller.SetLayout(size, position)
+        expandedSize, openPosition = size, position
+        group.Size = size
+        serial += 1
+        for _, animation in ipairs(tweens) do animation:Cancel() end
+        table.clear(tweens)
+        ghost.Visible = false
+        if desired then
+            state = "open"
+            window.Size, window.Position = size, position
+            window.BackgroundColor3 = Theme.Window
+            window.BackgroundTransparency = 0
+            corner.CornerRadius = UDim.new(0, 10)
+            group.GroupTransparency = 0
+            content.Visible, window.Visible, button.Visible = true, true, false
+        else
+            state = "closed"
+            closedAppearance()
+            group.GroupTransparency = 1
+            content.Visible, window.Visible, button.Visible = false, false, true
+        end
+        popupVisible(desired)
+        directContent()
     end
     return controller
 end

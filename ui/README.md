@@ -23,7 +23,7 @@ Use `DeferShow = true` and call `Window:Ready()` after adding every tab and cont
 
 Run this in an executor with `game:HttpGet` and `loadstring`. The library loads its launcher PNG from this repository and caches it using `writefile` and `getcustomasset` when available. It falls back to an S letter if the custom image cannot be loaded. Menu icons use the IDs listed in [assets/icons.lua](assets/icons.lua), sourced from icons.rest.
 
-Right Shift opens or minimizes the menu. Drag the header to move the window, or drag the minimized launcher. End turns off all toggles unless the script supplies `OnPanic`. The Discord prompt is optional and never joins or opens Discord automatically.
+Right Shift opens or minimizes the menu. Drag the title area or top bar with a mouse or finger to move the window, or drag the minimized launcher. The menu fits smaller screens, adapts to rotation, and uses larger touch controls on mobile. Tabs and pages scroll vertically; tap the S launcher to reopen without a keyboard. End turns off all toggles unless the script supplies `OnPanic`. The Discord prompt is optional and never joins or opens Discord automatically.
 
 ## Documentation
 

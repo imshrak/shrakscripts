@@ -40,6 +40,7 @@ Optional fields:
 | `AssetBase` | Override the base URL containing launcher-s.png, useful for forks. |
 | `CacheFolder` | Executor asset cache folder. Defaults to ShrakScriptsUI. |
 | `OnPanic` | Callback for the panic key. Defaults to turning off window toggles. |
+| `Mobile` | Optional boolean override for larger touch controls. Defaults to automatic touchscreen detection. |
 
 Window methods:
 
@@ -58,6 +59,10 @@ Window methods:
 `Window.Frame`, `Window.Screen`, `Window.LauncherButton`, and `Window.Theme` expose the underlying UI objects. `Window.Toggles`, `Window.Options`, and `Window.Controls` contain controls by ID.
 
 The ScreenGui stays disabled during construction and launcher-asset loading. With `DeferShow = true`, it also stays disabled while your script builds controls or waits for game data. Call `Window:Ready()` at the end of setup; the optional Discord prompt appears at that point too. Without DeferShow, the library reveals the UI on the next deferred task for compatibility with existing scripts.
+
+The title/subtitle area, the top bar, and the invitation dialog support mouse and single-finger dragging. The window fits the available device-safe area and stays within its edges. It adapts when the viewport changes or the device rotates. Touchscreens receive larger tab, toggle, button, slider, and dropdown targets, with dropdown summaries on a separate line. Tabs and pages scroll vertically; the minimized S launcher opens the menu without a keyboard. Extra touches do not take over an active drag or slider.
+
+When open, menu content renders directly in the window for sharp text and icons. The CanvasGroup is used only during the minimize/reopen fade and is left empty once the transition completes.
 
 ## Tabs and sections
 

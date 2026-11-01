@@ -1,20 +1,3 @@
-local dragStart, startPosition
-beginDrag = function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragStart = input.Position
-        startPosition = window.Position
-    end
-end
-track(topBar.InputBegan:Connect(beginDrag))
-track(UserInputService.InputChanged:Connect(function(input)
-    if dragStart and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        window.Position = UDim2.fromOffset(math.floor(startPosition.X.Offset + delta.X), math.floor(startPosition.Y.Offset + delta.Y))
-    end
-end))
-track(UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragStart = nil end
-end))
 local bubble = create("TextButton", {
     Position = config.LauncherPosition or UDim2.fromOffset(22, 104),
     Size = UDim2.fromOffset(52, 52),
@@ -30,9 +13,27 @@ Components.Launcher(bubble, bubbleIcon, TweenService, track, function(button, la
 end, nil, Theme)
 local menu = Components.MenuTransition(TweenService, window, content, bubble, Theme, function() return popup end, UDim2.fromOffset(WIDTH, HEIGHT), config.AutoShow ~= false)
 Hub.Menu, Hub.LauncherButton = menu, bubble
+local layout = Components.Responsive(screen, window, menu, config, track, resizeContent)
+local drag = Components.Drag(UserInputService, track, layout.Position, layout.Move, menu.CanDrag)
+Hub.Layout, Hub.Drag = layout, drag
+beginDrag = drag.Begin
+local function dragHandle(parent, name, size)
+    local handle = create("TextButton", {
+        Name = name,
+        Size = size,
+        BackgroundTransparency = 1,
+        AutoButtonColor = false,
+        Text = "",
+        ZIndex = 3,
+        Parent = parent,
+    })
+    track(handle.InputBegan:Connect(beginDrag))
+end
+dragHandle(header, "TitleDragHandle", UDim2.fromScale(1, 1))
+dragHandle(topBar, "TopBarDragHandle", UDim2.new(1, TOUCH and -100 or -84, 1, 0))
 Hub.LauncherControls = Components.LauncherControls(bubble, UserInputService, track, function() menu.SetOpen(true) end)
-track(minimizeButton.MouseButton1Click:Connect(function() menu.SetOpen(false) end))
-track(closeButton.MouseButton1Click:Connect(function() Hub:Unload() end))
+track(minimizeButton.Activated:Connect(function() menu.SetOpen(false) end))
+track(closeButton.Activated:Connect(function() Hub:Unload() end))
 track(UserInputService.InputBegan:Connect(function(input, processed)
     if processed or UserInputService:GetFocusedTextBox() then return end
     if input.KeyCode == (config.ToggleKeybind or Enum.KeyCode.RightShift) then menu.Toggle()
@@ -46,6 +47,7 @@ function Hub:Toggle() menu.Toggle() return self end
 function Hub:IsOpen() return menu.IsOpen() end
 function Hub:Ready()
     if not self.Active or self.Loaded then return self end
+    layout.Refresh()
     self.Loaded = true
     if config.ShowDiscordPrompt then
         self:ShowDiscordPrompt()

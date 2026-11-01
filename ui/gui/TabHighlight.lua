@@ -1,4 +1,4 @@
-return function(TweenService, Theme, tabList)
+return function(TweenService, Theme, tabList, track)
     local baseZ = tabList:GetAttribute("TabHighlightBaseZIndex") or tabList.ZIndex
     tabList:SetAttribute("TabHighlightBaseZIndex", baseZ)
     tabList.ZIndex = baseZ + 1
@@ -44,10 +44,21 @@ return function(TweenService, Theme, tabList)
         local position = background.Position
         highlight.Position = UDim2.fromOffset(position.X.Offset, position.Y.Offset + (background.Size.Y.Offset - 16) / 2)
     end
-    background:GetPropertyChangedSignal("Position"):Connect(alignIndicator)
-    background:GetPropertyChangedSignal("Size"):Connect(alignIndicator)
+    track(background:GetPropertyChangedSignal("Position"):Connect(alignIndicator))
+    track(background:GetPropertyChangedSignal("Size"):Connect(alignIndicator))
 
     local current, motion
+    local function refresh()
+        task.defer(function()
+            if not current or not tabList.Parent then return end
+            if motion then motion:Cancel() end
+            local position = current.Button.AbsolutePosition - tabList.AbsolutePosition
+            background.Position = UDim2.fromOffset(position.X, position.Y)
+            background.Size = current.Button.Size
+        end)
+    end
+    track(tabList:GetPropertyChangedSignal("CanvasPosition"):Connect(refresh))
+    track(tabList:GetPropertyChangedSignal("AbsoluteSize"):Connect(refresh))
     return function(tab)
         if current == tab then
             return

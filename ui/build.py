@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 
 root = Path(__file__).resolve().parent
-components = ["TabHighlight", "DropdownDismiss", "SingleSelect", "DialogDrag", "MenuTransition", "LauncherControls", "Launcher", "Assets"]
+components = ["TabHighlight", "DropdownDismiss", "SingleSelect", "DialogDrag", "MenuTransition", "LauncherControls", "Launcher", "Assets", "Drag", "Responsive"]
 source = '''local environment = getgenv and getgenv() or _G
 environment.ShrakScriptsUIWindows = environment.ShrakScriptsUIWindows or {}
 local Library = {

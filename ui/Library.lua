@@ -30,7 +30,7 @@ return {
 
 end)()
 Components.TabHighlight = (function()
-return function(TweenService, Theme, tabList)
+return function(TweenService, Theme, tabList, track)
     local baseZ = tabList:GetAttribute("TabHighlightBaseZIndex") or tabList.ZIndex
     tabList:SetAttribute("TabHighlightBaseZIndex", baseZ)
     tabList.ZIndex = baseZ + 1
@@ -76,10 +76,21 @@ return function(TweenService, Theme, tabList)
         local position = background.Position
         highlight.Position = UDim2.fromOffset(position.X.Offset, position.Y.Offset + (background.Size.Y.Offset - 16) / 2)
     end
-    background:GetPropertyChangedSignal("Position"):Connect(alignIndicator)
-    background:GetPropertyChangedSignal("Size"):Connect(alignIndicator)
+    track(background:GetPropertyChangedSignal("Position"):Connect(alignIndicator))
+    track(background:GetPropertyChangedSignal("Size"):Connect(alignIndicator))
 
     local current, motion
+    local function refresh()
+        task.defer(function()
+            if not current or not tabList.Parent then return end
+            if motion then motion:Cancel() end
+            local position = current.Button.AbsolutePosition - tabList.AbsolutePosition
+            background.Position = UDim2.fromOffset(position.X, position.Y)
+            background.Size = current.Button.Size
+        end)
+    end
+    track(tabList:GetPropertyChangedSignal("CanvasPosition"):Connect(refresh))
+    track(tabList:GetPropertyChangedSignal("AbsoluteSize"):Connect(refresh))
     return function(tab)
         if current == tab then
             return
@@ -158,22 +169,27 @@ end
 
 end)()
 Components.SingleSelect = (function()
-return function(create, text, corner, stroke, icon, track, tween, Theme, card, cardLabels, attachDismiss)
+return function(create, text, corner, stroke, icon, track, tween, Theme, card, cardLabels, attachDismiss, touch)
     return function(tab, title, getOptions, getValue, onChange)
-        local HEAD, ROW = 42, 28
+        local HEAD, ROW = touch and 56 or 42, touch and 40 or 28
         local frame = card(tab, HEAD)
         frame.Name = "SingleSelect"
         frame.ClipsDescendants = true
-        cardLabels(frame, title)
+        local titleLabel = cardLabels(frame, title)
+        if touch then
+            titleLabel.Size = UDim2.new(1, -48, 0, 16)
+            titleLabel.Position = UDim2.fromOffset(14, 8)
+            titleLabel.TextWrapped = false
+        end
         local summary = text({
-            Size = UDim2.fromOffset(170, 16),
-            Position = UDim2.new(1, -206, 0, 13),
+            Size = touch and UDim2.new(1, -48, 0, 16) or UDim2.fromOffset(170, 16),
+            Position = touch and UDim2.fromOffset(14, 30) or UDim2.new(1, -206, 0, 13),
             TextColor3 = Theme.Muted,
-            TextXAlignment = Enum.TextXAlignment.Right,
+            TextXAlignment = touch and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right,
             TextTruncate = Enum.TextTruncate.AtEnd,
             Parent = frame,
         })
-        local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, 13), Theme.Muted, frame)
+        local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, HEAD / 2 - 8), Theme.Muted, frame)
         local head = create("TextButton", {
             Name = "ChoiceHeader",
             Size = UDim2.new(1, 0, 0, HEAD),
@@ -188,6 +204,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ScrollBarThickness = 2,
+            ScrollingDirection = Enum.ScrollingDirection.Y,
             ScrollBarImageColor3 = Theme.Border,
             CanvasSize = UDim2.new(),
             Parent = frame,
@@ -219,7 +236,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             if changed then
                 body:ClearAllChildren()
                 options, rows = latest, {}
-                body.Size = UDim2.new(1, -16, 0, math.min(#options, 6) * ROW)
+                body.Size = UDim2.new(1, -16, 0, math.min(#options, touch and 4 or 6) * ROW)
                 body.CanvasSize = UDim2.fromOffset(0, #options * ROW)
                 for index, option in ipairs(options) do
                     local row = create("TextButton", {
@@ -234,7 +251,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
                     row:SetAttribute("ChoiceValue", option.Value)
                     local box = create("Frame", {
                         Size = UDim2.fromOffset(14, 14),
-                        Position = UDim2.fromOffset(8, 7),
+                        Position = UDim2.fromOffset(8, (ROW - 14) / 2),
                         BackgroundColor3 = Theme.Surface,
                         Parent = row,
                     }, { corner(3), stroke(Theme.Faint) })
@@ -243,7 +260,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
                     rows[index] = { Box = box, Mark = mark }
                     track(row.MouseEnter:Connect(function() tween(row, { BackgroundTransparency = 0 }) end))
                     track(row.MouseLeave:Connect(function() tween(row, { BackgroundTransparency = 1 }) end))
-                    track(row.MouseButton1Click:Connect(function()
+                    track(row.Activated:Connect(function()
                         onChange(option.Value)
                         updateSelection()
                         setOpen(false)
@@ -252,7 +269,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             end
             updateSelection()
         end
-        track(head.MouseButton1Click:Connect(function()
+        track(head.Activated:Connect(function()
             if not open then refresh() end
             setOpen(not open)
         end))
@@ -264,7 +281,7 @@ end
 
 end)()
 Components.DialogDrag = (function()
-return function(create, track, beginDrag)
+return function(create, track, beginDrag, touch)
     local function addHandle(parent, size)
         if parent:FindFirstChild("DiscordDragHandle") then
             return
@@ -281,7 +298,7 @@ return function(create, track, beginDrag)
         track(handle.InputBegan:Connect(beginDrag))
     end
     return function(overlay, panel)
-        addHandle(overlay, UDim2.new(1, -84, 0, 48))
+        addHandle(overlay, UDim2.new(1, touch and -100 or -84, 0, 48))
         addHandle(panel, UDim2.new(1, -56, 0, 68))
     end
 end
@@ -298,9 +315,21 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
     group.Position = content.Position
     group.BackgroundTransparency = 1
     group.BorderSizePixel = 0
+    group.Visible = false
     group.Parent = window
-    content.Position = UDim2.new()
-    content.Parent = group
+
+    local function directContent()
+        content.Parent = window
+        content.Position = group.Position
+        group.Visible = false
+    end
+    local function fadeContent()
+        if content.Parent ~= group then
+            content.Parent = group
+            content.Position = UDim2.new()
+        end
+        group.Visible = true
+    end
 
     local logo = button:FindFirstChild("LauncherLogo") or button:FindFirstChildWhichIsA("TextLabel")
     local ghost = logo:Clone()
@@ -351,6 +380,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
         content.Visible = true
         window.Visible = true
         button.Visible = false
+        directContent()
     else
         closedAppearance()
         group.GroupTransparency = 1
@@ -358,6 +388,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
         window.Visible = false
         button.Visible = true
         popupVisible(false)
+        directContent()
     end
 
     local controller = {}
@@ -371,6 +402,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
         table.clear(tweens)
         local wasClosed = state == "closed"
         state = open and "opening" or "closing"
+        fadeContent()
         button.Visible = false
         if open and wasClosed then
             closedAppearance()
@@ -410,12 +442,14 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
                 group.GroupTransparency = 0
                 content.Visible = true
                 popupVisible(true)
+                directContent()
             else
                 state = "closed"
                 closedAppearance()
                 content.Visible = false
                 window.Visible = false
                 button.Visible = true
+                directContent()
             end
         end)
     end
@@ -424,6 +458,33 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
     end
     function controller.IsOpen()
         return desired
+    end
+    function controller.GetExpandedSize() return expandedSize end
+    function controller.GetExpandedPosition() return state == "open" and window.Position or openPosition end
+    function controller.CanDrag() return state == "open" end
+    function controller.SetLayout(size, position)
+        expandedSize, openPosition = size, position
+        group.Size = size
+        serial += 1
+        for _, animation in ipairs(tweens) do animation:Cancel() end
+        table.clear(tweens)
+        ghost.Visible = false
+        if desired then
+            state = "open"
+            window.Size, window.Position = size, position
+            window.BackgroundColor3 = Theme.Window
+            window.BackgroundTransparency = 0
+            corner.CornerRadius = UDim.new(0, 10)
+            group.GroupTransparency = 0
+            content.Visible, window.Visible, button.Visible = true, true, false
+        else
+            state = "closed"
+            closedAppearance()
+            group.GroupTransparency = 1
+            content.Visible, window.Visible, button.Visible = false, false, true
+        end
+        popupVisible(desired)
+        directContent()
     end
     return controller
 end
@@ -434,12 +495,12 @@ return function(button, UserInputService, track, activate)
     local drag
     local suppressUntil = 0
     local function began(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if not drag and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
             drag = { Input = input, Position = input.Position, Start = button.Position, Moved = false }
         end
     end
     local function changed(input)
-        if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input == drag.Input) then
+        if drag and (drag.Input.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement or input == drag.Input) then
             local delta = input.Position - drag.Position
             if delta.Magnitude > 4 then drag.Moved = true end
             if drag.Moved then
@@ -448,7 +509,7 @@ return function(button, UserInputService, track, activate)
         end
     end
     local function ended(input)
-        if drag and (input.UserInputType == Enum.UserInputType.MouseButton1 or input == drag.Input) then
+        if drag and (drag.Input.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseButton1 or input == drag.Input) then
             if drag.Moved then suppressUntil = os.clock() + 0.15 end
             drag = nil
         end
@@ -459,6 +520,7 @@ return function(button, UserInputService, track, activate)
     track(button.InputBegan:Connect(began))
     track(UserInputService.InputChanged:Connect(changed))
     track(UserInputService.InputEnded:Connect(ended))
+    track(UserInputService.WindowFocusReleased:Connect(function() drag = nil end))
     track(button.Activated:Connect(clicked))
     return { Began = began, Changed = changed, Ended = ended, Click = clicked }
 end
@@ -551,6 +613,79 @@ return function(button, label, Library, config)
 end
 
 end)()
+Components.Drag = (function()
+return function(UserInputService, track, getPosition, setPosition, canDrag)
+    local drag
+    local function began(input)
+        if drag or canDrag and not canDrag() then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            drag = { Input = input, Point = input.Position, Position = getPosition() }
+        end
+    end
+    local function changed(input)
+        if not drag then return end
+        local mouse = drag.Input.UserInputType == Enum.UserInputType.MouseButton1
+        if mouse and input.UserInputType == Enum.UserInputType.MouseMovement or not mouse and input == drag.Input then
+            setPosition(drag.Position + Vector2.new(input.Position.X - drag.Point.X, input.Position.Y - drag.Point.Y))
+        end
+    end
+    local function ended(input)
+        if drag and (input == drag.Input or drag.Input.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseButton1) then
+            drag = nil
+        end
+    end
+    track(UserInputService.InputChanged:Connect(changed))
+    track(UserInputService.InputEnded:Connect(ended))
+    track(UserInputService.WindowFocusReleased:Connect(function() drag = nil end))
+    return { Begin = began, Change = changed, End = ended }
+end
+
+end)()
+Components.Responsive = (function()
+return function(screen, window, menu, config, track, resizeContent)
+    local controller = {}
+    function controller.Bounds()
+        local bounds = screen.AbsoluteSize
+        if bounds.X <= 0 or bounds.Y <= 0 then
+            local camera = workspace.CurrentCamera
+            return camera and camera.ViewportSize or Vector2.new(1280, 720)
+        end
+        return bounds
+    end
+    function controller.Clamp(point, size, bounds)
+        bounds = bounds or controller.Bounds()
+        local marginX = math.min(8, math.max(0, (bounds.X - size.X) / 2))
+        local marginY = math.min(8, math.max(0, (bounds.Y - size.Y) / 2))
+        return Vector2.new(
+            math.floor(math.clamp(point.X, marginX, math.max(marginX, bounds.X - size.X - marginX))),
+            math.floor(math.clamp(point.Y, marginY, math.max(marginY, bounds.Y - size.Y - marginY)))
+        )
+    end
+    function controller.Position()
+        local point, bounds = window.Position, controller.Bounds()
+        return Vector2.new(point.X.Scale * bounds.X + point.X.Offset, point.Y.Scale * bounds.Y + point.Y.Offset)
+    end
+    function controller.Move(point)
+        local size = menu.GetExpandedSize()
+        point = controller.Clamp(point, Vector2.new(size.X.Offset, size.Y.Offset))
+        window.Position = UDim2.fromOffset(point.X, point.Y)
+    end
+    function controller.Refresh(bounds)
+        if not window.Parent then return end
+        bounds = bounds or controller.Bounds()
+        local width = math.min(config.Width or 560, math.max(1, bounds.X - 16))
+        local height = math.min(config.Height or 400, math.max(1, bounds.Y - 16))
+        local position = menu.GetExpandedPosition()
+        local point = controller.Clamp(Vector2.new(position.X.Scale * bounds.X + position.X.Offset, position.Y.Scale * bounds.Y + position.Y.Offset), Vector2.new(width, height), bounds)
+        resizeContent(width, height)
+        menu.SetLayout(UDim2.fromOffset(width, height), UDim2.fromOffset(point.X, point.Y))
+    end
+    track(screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() controller.Refresh() end))
+    controller.Refresh()
+    return controller
+end
+
+end)()
 local createWindow = (function()
 return function(Library, config, Components)
 local Players = game:GetService("Players")
@@ -564,6 +699,7 @@ if Library.Windows[id] then Library.Windows[id]:Unload() end
 local Hub = { Active = true, Toggles = {}, Options = {}, Controls = {}, Tabs = {}, UnloadCallbacks = {} }
 local connections = {}
 local beginDrag
+local TOUCH = config.Mobile == true or config.Mobile == nil and UserInputService.TouchEnabled
 local DISCORD_CODE = tostring(config.DiscordInvite or ""):gsub("^https?://discord%.gg/", ""):gsub("^discord%.gg/", "")
 local function track(connection)
     table.insert(connections, connection)
@@ -644,13 +780,16 @@ end
 
 local camera = Workspace.CurrentCamera
 local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
-local WIDTH, HEIGHT = config.Width or 560, config.Height or 400
+local WIDTH = math.min(config.Width or 560, math.max(1, viewport.X - 16))
+local HEIGHT = math.min(config.Height or 400, math.max(1, viewport.Y - 16))
+local SIDEBAR = WIDTH < 500 and 112 or 156
 
 local screen = create("ScreenGui", {
     Name = id,
     Enabled = false,
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
+    ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
     Parent = config.Parent or (gethui and gethui() or CoreGui),
 })
@@ -671,7 +810,7 @@ local content = create("Frame", {
 })
 
 local sidebar = create("Frame", {
-    Size = UDim2.new(0, 156, 1, 0),
+    Size = UDim2.new(0, SIDEBAR, 1, 0),
     BackgroundColor3 = Theme.Sidebar,
     BorderSizePixel = 0,
     Parent = content,
@@ -699,34 +838,48 @@ local header = create("Frame", {
     Parent = sidebar,
 })
 
-text({
-    Size = UDim2.new(1, -32, 0, 18),
-    Position = UDim2.fromOffset(16, 14),
+local windowTitle = text({
+    Size = UDim2.new(1, WIDTH < 500 and -24 or -32, 0, 18),
+    Position = UDim2.fromOffset(WIDTH < 500 and 12 or 16, 14),
     FontFace = Fonts.Bold,
-    TextSize = 16,
+    TextSize = WIDTH < 500 and 14 or 16,
+    TextTruncate = Enum.TextTruncate.AtEnd,
     Text = config.Title or "ShrakScripts",
     Parent = header,
 })
 
-text({
-    Size = UDim2.new(1, -32, 0, 14),
-    Position = UDim2.fromOffset(16, 33),
+local windowSubtitle = text({
+    Size = UDim2.new(1, WIDTH < 500 and -24 or -32, 0, 14),
+    Position = UDim2.fromOffset(WIDTH < 500 and 12 or 16, 33),
     TextSize = 12,
     TextColor3 = Theme.Faint,
     Text = config.Subtitle or "ShrakScripts UI",
+    TextTruncate = Enum.TextTruncate.AtEnd,
     Parent = header,
 })
 
-local tabList = create("Frame", {
+local tabArea = create("Frame", {
     Size = UDim2.new(1, -16, 1, -66),
     Position = UDim2.fromOffset(8, 62),
     BackgroundTransparency = 1,
+    ClipsDescendants = true,
     Parent = sidebar,
+})
+local tabList = create("ScrollingFrame", {
+    Name = "TabList",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 0,
+    CanvasSize = UDim2.new(),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    ScrollingDirection = Enum.ScrollingDirection.Y,
+    Parent = tabArea,
 }, { create("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }) })
 
 local topBar = create("Frame", {
-    Size = UDim2.new(1, -157, 0, 48),
-    Position = UDim2.fromOffset(157, 0),
+    Size = UDim2.new(1, -SIDEBAR - 1, 0, 48),
+    Position = UDim2.fromOffset(SIDEBAR + 1, 0),
     BackgroundTransparency = 1,
     Parent = content,
 })
@@ -742,14 +895,14 @@ local pageTitle = text({
 
 local function windowButton(offset, iconName, hoverColor)
     local button = create("TextButton", {
-        Size = UDim2.fromOffset(26, 26),
-        Position = UDim2.new(1, offset, 0, 11),
+        Size = UDim2.fromOffset(TOUCH and 40 or 26, TOUCH and 40 or 26),
+        Position = UDim2.new(1, offset, 0, TOUCH and 4 or 11),
         BackgroundColor3 = Theme.Window,
         AutoButtonColor = false,
         Text = "",
         Parent = topBar,
     }, { corner(6) })
-    local glyph = icon(iconName, 16, UDim2.fromOffset(5, 5), Theme.Muted, button)
+    local glyph = icon(iconName, 16, UDim2.fromOffset(TOUCH and 12 or 5, TOUCH and 12 or 5), Theme.Muted, button)
     track(button.MouseEnter:Connect(function()
         tween(button, { BackgroundColor3 = Theme.Hover })
         tween(glyph, { ImageColor3 = hoverColor or Theme.Text })
@@ -761,26 +914,26 @@ local function windowButton(offset, iconName, hoverColor)
     return button
 end
 
-local closeButton = windowButton(-38, "x")
-local minimizeButton = windowButton(-68, "minus")
+local closeButton = windowButton(TOUCH and -48 or -38, "x")
+local minimizeButton = windowButton(TOUCH and -92 or -68, "minus")
 
-create("Frame", {
-    Size = UDim2.new(1, -157, 0, 1),
-    Position = UDim2.fromOffset(157, 48),
+local headerBorder = create("Frame", {
+    Size = UDim2.new(1, -SIDEBAR - 1, 0, 1),
+    Position = UDim2.fromOffset(SIDEBAR + 1, 48),
     BackgroundColor3 = Theme.Border,
     BorderSizePixel = 0,
     Parent = content,
 })
 
 local pages = create("Frame", {
-    Size = UDim2.new(1, -157, 1, -49),
-    Position = UDim2.fromOffset(157, 49),
+    Size = UDim2.new(1, -SIDEBAR - 1, 1, -49),
+    Position = UDim2.fromOffset(SIDEBAR + 1, 49),
     BackgroundTransparency = 1,
     Parent = content,
 })
 
 local tabs = {}
-local moveTabHighlight = Components.TabHighlight(TweenService, Theme, tabList)
+local moveTabHighlight = Components.TabHighlight(TweenService, Theme, tabList, track)
 
 local function selectTab(target)
     for _, tab in ipairs(tabs) do
@@ -801,6 +954,7 @@ local function addTab(name, iconName)
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 2,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
         ScrollBarImageColor3 = Theme.Border,
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         CanvasSize = UDim2.new(),
@@ -816,7 +970,7 @@ local function addTab(name, iconName)
         }),
     })
     local button = create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 34),
+        Size = UDim2.new(1, 0, 0, TOUCH and 44 or 34),
         BackgroundColor3 = Theme.Hover,
         BackgroundTransparency = 1,
         AutoButtonColor = false,
@@ -832,11 +986,13 @@ local function addTab(name, iconName)
         Visible = false,
         Parent = button,
     }, { corner(1) })
-    local tabIcon = icon(iconName, 16, UDim2.fromOffset(12, 9), Theme.Muted, button)
+    local tabIcon = icon(iconName, 16, UDim2.new(0, 12, 0.5, -8), Theme.Muted, button)
     local label = text({
         Size = UDim2.new(1, -44, 1, 0),
         Position = UDim2.fromOffset(38, 0),
         FontFace = Fonts.Medium,
+        TextSize = TOUCH and 13 or 14,
+        TextTruncate = Enum.TextTruncate.AtEnd,
         TextColor3 = Theme.Muted,
         Text = name,
         Parent = button,
@@ -851,7 +1007,7 @@ local function addTab(name, iconName)
         Order = 0,
     }
     table.insert(tabs, tab)
-    track(button.MouseButton1Click:Connect(function()
+    track(button.Activated:Connect(function()
         selectTab(tab)
     end))
     if #tabs == 1 then
@@ -895,10 +1051,13 @@ local function card(tab, height)
 end
 
 local function cardLabels(frame, title, description)
-    text({
-        Size = UDim2.new(1, -90, 0, 16),
-        Position = UDim2.fromOffset(14, description and 9 or 13),
+    local label = text({
+        Size = TOUCH and not description and UDim2.new(1, -76, 1, 0) or UDim2.new(1, -90, 0, 16),
+        Position = UDim2.fromOffset(14, TOUCH and not description and 0 or description and 9 or 13),
         FontFace = Fonts.Medium,
+        TextSize = TOUCH and 13 or 14,
+        TextWrapped = TOUCH and not description,
+        TextTruncate = Enum.TextTruncate.AtEnd,
         Text = title,
         Parent = frame,
     })
@@ -909,15 +1068,17 @@ local function cardLabels(frame, title, description)
             TextSize = 12,
             TextColor3 = Theme.Muted,
             Text = description,
+            TextTruncate = Enum.TextTruncate.AtEnd,
             Parent = frame,
         })
     end
+    return label
 end
 
 local resetters = {}
 
 local function addToggle(tab, title, onChange)
-    local frame = card(tab, 42)
+    local frame = card(tab, TOUCH and 48 or 42)
     cardLabels(frame, title)
     local switch = create("Frame", {
         Size = UDim2.fromOffset(34, 18),
@@ -947,7 +1108,7 @@ local function addToggle(tab, title, onChange)
         })
         onChange(value)
     end
-    track(hitbox.MouseButton1Click:Connect(function()
+    track(hitbox.Activated:Connect(function()
         set(not enabled)
     end))
     track(hitbox.MouseEnter:Connect(function()
@@ -967,8 +1128,11 @@ end
 
 
 local function addSlider(tab, title, min, max, value, onChange, rounding)
-    local frame = card(tab, 58)
-    cardLabels(frame, title)
+    local frame = card(tab, TOUCH and 66 or 58)
+    local titleLabel = cardLabels(frame, title)
+    titleLabel.Size = UDim2.new(1, -100, 0, 16)
+    titleLabel.Position = UDim2.fromOffset(14, 13)
+    titleLabel.TextWrapped = false
     local valueLabel = text({
         Size = UDim2.fromOffset(80, 16),
         Position = UDim2.new(1, -94, 0, 13),
@@ -998,17 +1162,17 @@ local function addSlider(tab, title, min, max, value, onChange, rounding)
         Parent = bar,
     }, { round(), stroke(Theme.Window, 2) })
     local hitbox = create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 24),
-        Position = UDim2.fromOffset(0, 30),
+        Size = UDim2.new(1, 0, 0, TOUCH and 40 or 24),
+        Position = UDim2.fromOffset(0, TOUCH and 26 or 30),
         BackgroundTransparency = 1,
         Text = "",
         Parent = frame,
     })
-    local dragging = false
+    local dragInput, scrolling
     local function update(x)
         local alpha = math.clamp((x - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
         local scale = 10 ^ (rounding or 0)
-        local result = math.round((min + (max - min) * alpha) * scale) / scale
+        local result = math.clamp(math.round((min + (max - min) * alpha) * scale) / scale, min, max)
         alpha = (result - min) / (max - min)
         fill.Size = UDim2.fromScale(alpha, 1)
         knob.Position = UDim2.new(alpha, -6, 0.5, -6)
@@ -1016,20 +1180,26 @@ local function addSlider(tab, title, min, max, value, onChange, rounding)
         onChange(result)
     end
     track(hitbox.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
+        if not dragInput and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            dragInput = input
+            scrolling = tab.Page.ScrollingEnabled
+            tab.Page.ScrollingEnabled = false
             update(input.Position.X)
         end
     end))
     track(UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if dragInput and (dragInput.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement or input == dragInput) then
             update(input.Position.X)
         end
     end))
     track(UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
+        if dragInput and (input == dragInput or dragInput.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseButton1) then
+            dragInput = nil
+            tab.Page.ScrollingEnabled = scrolling
         end
+    end))
+    track(UserInputService.WindowFocusReleased:Connect(function()
+        if dragInput then dragInput = nil tab.Page.ScrollingEnabled = scrolling end
     end))
     local function setValue(result)
         local scale = 10 ^ (rounding or 0)
@@ -1044,20 +1214,25 @@ local function addSlider(tab, title, min, max, value, onChange, rounding)
 end
 
 local function addMultiSelect(tab, title, options, selected, emptyText, onChange)
-    local ROW, HEAD = 28, 42
-    local listHeight = #options * ROW + 44
+    local ROW, HEAD = TOUCH and 40 or 28, TOUCH and 56 or 42
+    local listHeight = #options * ROW + (TOUCH and 56 or 44)
     local frame = card(tab, HEAD)
     frame.ClipsDescendants = true
-    cardLabels(frame, title)
+    local titleLabel = cardLabels(frame, title)
+    if TOUCH then
+        titleLabel.Size = UDim2.new(1, -48, 0, 16)
+        titleLabel.Position = UDim2.fromOffset(14, 8)
+        titleLabel.TextWrapped = false
+    end
     local summary = text({
-        Size = UDim2.fromOffset(170, 16),
-        Position = UDim2.new(1, -206, 0, 13),
+        Size = TOUCH and UDim2.new(1, -48, 0, 16) or UDim2.fromOffset(170, 16),
+        Position = TOUCH and UDim2.fromOffset(14, 30) or UDim2.new(1, -206, 0, 13),
         TextColor3 = Theme.Muted,
-        TextXAlignment = Enum.TextXAlignment.Right,
+        TextXAlignment = TOUCH and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right,
         TextTruncate = Enum.TextTruncate.AtEnd,
         Parent = frame,
     })
-    local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, 13), Theme.Muted, frame)
+    local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, HEAD / 2 - 8), Theme.Muted, frame)
     local headButton = create("TextButton", {
         Size = UDim2.new(1, 0, 0, HEAD),
         BackgroundTransparency = 1,
@@ -1098,7 +1273,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         }, { corner(5) })
         local box = create("Frame", {
             Size = UDim2.fromOffset(14, 14),
-            Position = UDim2.fromOffset(8, 7),
+            Position = UDim2.fromOffset(8, (ROW - 14) / 2),
             BackgroundColor3 = Theme.Surface,
             Parent = row,
         }, { corner(3), stroke(Theme.Faint) })
@@ -1106,7 +1281,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         mark.Visible = false
         create("Frame", {
             Size = UDim2.fromOffset(6, 6),
-            Position = UDim2.fromOffset(32, 11),
+            Position = UDim2.fromOffset(32, (ROW - 6) / 2),
             BackgroundColor3 = option.Color or Theme.Muted,
             Parent = row,
         }, { round() })
@@ -1123,7 +1298,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         track(row.MouseLeave:Connect(function()
             tween(row, { BackgroundTransparency = 1 })
         end))
-        track(row.MouseButton1Click:Connect(function()
+        track(row.Activated:Connect(function()
             selected[option.Name] = not selected[option.Name] or nil
             refresh()
             if onChange then onChange(selected) end
@@ -1131,7 +1306,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
     end
     local function quickButton(label, x, callback)
         local button = create("TextButton", {
-            Size = UDim2.fromOffset(64, 24),
+            Size = UDim2.fromOffset(64, TOUCH and 40 or 24),
             Position = UDim2.fromOffset(x, HEAD + 10 + #options * ROW),
             BackgroundColor3 = Theme.Hover,
             AutoButtonColor = false,
@@ -1141,7 +1316,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
             Text = label,
             Parent = frame,
         }, { corner(5) })
-        track(button.MouseButton1Click:Connect(function()
+        track(button.Activated:Connect(function()
             callback()
             refresh()
             if onChange then onChange(selected) end
@@ -1156,7 +1331,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         table.clear(selected)
     end)
     local open = false
-    track(headButton.MouseButton1Click:Connect(function()
+    track(headButton.Activated:Connect(function()
         open = not open
         tween(frame, { Size = UDim2.new(1, 0, 0, open and HEAD + listHeight or HEAD) }, 0.18)
         tween(chevron, { Rotation = open and 180 or 0 }, 0.18)
@@ -1166,10 +1341,10 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
 end
 
 local attachDropdownDismiss = Components.DropdownDismiss(UserInputService, track)
-local addSingleSelect = Components.SingleSelect(create, text, corner, stroke, icon, track, tween, Theme, card, cardLabels, attachDropdownDismiss)
+local addSingleSelect = Components.SingleSelect(create, text, corner, stroke, icon, track, tween, Theme, card, cardLabels, attachDropdownDismiss, TOUCH)
 
 local function addButton(tab, title, description, callback)
-    local frame = card(tab, description and 50 or 42)
+    local frame = card(tab, TOUCH and (description and 58 or 48) or (description and 50 or 42))
     cardLabels(frame, title, description)
     icon("chevronRight", 16, UDim2.new(1, -30, 0.5, -8), Theme.Muted, frame)
     local hitbox = create("TextButton", {
@@ -1184,7 +1359,7 @@ local function addButton(tab, title, description, callback)
     track(hitbox.MouseLeave:Connect(function()
         tween(frame, { BackgroundColor3 = Theme.Surface })
     end))
-    track(hitbox.MouseButton1Click:Connect(callback))
+    track(hitbox.Activated:Connect(callback))
     return frame
 end
 
@@ -1192,7 +1367,7 @@ local Lighting = game:GetService("Lighting")
 local popup
 local attachDialogDrag = Components.DialogDrag(create, track, function(input)
     beginDrag(input)
-end)
+end, TOUCH)
 local INVITE_URL = "https://discord.gg/" .. DISCORD_CODE
 
 local function closeDiscordPopup()
@@ -1201,7 +1376,7 @@ local function closeDiscordPopup()
     end
     local current = popup
     popup = nil
-    TweenService:Create(current.Panel, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(0.5, -170, 0.5, -78) }):Play()
+    TweenService:Create(current.Panel, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(0.5, 0, 0.5, 12) }):Play()
     tween(current.Overlay, { BackgroundTransparency = 1 }, 0.16)
     tween(current.Blur, { Size = 0 }, 0.16)
     for _, item in ipairs(current.Fade) do
@@ -1243,8 +1418,9 @@ local function showDiscordPopup()
     }, { corner(10) })
 
     local panel = faded(create("Frame", {
-        Size = UDim2.fromOffset(340, 180),
-        Position = UDim2.new(0.5, -170, 0.5, -78),
+        Size = UDim2.fromOffset(math.min(340, WIDTH - 32), 180),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 12),
         BackgroundColor3 = Theme.Window,
         ZIndex = 11,
         Parent = overlay,
@@ -1253,15 +1429,15 @@ local function showDiscordPopup()
     attachDialogDrag(overlay, panel)
 
     local dismiss = create("TextButton", {
-        Size = UDim2.fromOffset(28, 28),
-        Position = UDim2.new(1, -44, 0, 16),
+        Size = UDim2.fromOffset(TOUCH and 40 or 28, TOUCH and 40 or 28),
+        Position = UDim2.new(1, TOUCH and -48 or -44, 0, TOUCH and 8 or 16),
         BackgroundColor3 = Theme.Window,
         AutoButtonColor = false,
         Text = "",
         ZIndex = 12,
         Parent = panel,
     }, { corner(6) })
-    local dismissIcon = icon("x", 16, UDim2.fromOffset(6, 6), Theme.Muted, dismiss)
+    local dismissIcon = icon("x", 16, UDim2.fromOffset(TOUCH and 12 or 6, TOUCH and 12 or 6), Theme.Muted, dismiss)
     dismissIcon.ZIndex = 13
     faded(dismissIcon, "ImageTransparency")
 
@@ -1311,7 +1487,7 @@ local function showDiscordPopup()
             BackgroundColor3 = primary and Theme.Accent or Theme.Surface,
             AutoButtonColor = false,
             FontFace = Fonts.Bold,
-            TextSize = 14,
+        TextSize = TOUCH and 13 or 14,
             TextColor3 = primary and Theme.OnAccent or Theme.Text,
             Text = label,
             ZIndex = 12,
@@ -1338,10 +1514,10 @@ local function showDiscordPopup()
         fieldCopy.ImageColor3 = copied and Theme.Text or Theme.Muted
     end
 
-    track(closeChoice.MouseButton1Click:Connect(closeDiscordPopup))
-    track(dismiss.MouseButton1Click:Connect(closeDiscordPopup))
-    track(copyChoice.MouseButton1Click:Connect(onCopy))
-    track(field.MouseButton1Click:Connect(onCopy))
+    track(closeChoice.Activated:Connect(closeDiscordPopup))
+    track(dismiss.Activated:Connect(closeDiscordPopup))
+    track(copyChoice.Activated:Connect(onCopy))
+    track(field.Activated:Connect(onCopy))
     track(dismiss.MouseEnter:Connect(function()
         tween(dismiss, { BackgroundColor3 = Theme.Hover })
         tween(dismissIcon, { ImageColor3 = Theme.Text })
@@ -1360,9 +1536,27 @@ local function showDiscordPopup()
     popup = { Overlay = overlay, Panel = panel, Blur = blur, Fade = fade }
     tween(overlay, { BackgroundTransparency = 0.35 }, 0.2)
     tween(blur, { Size = 16 }, 0.2)
-    TweenService:Create(panel, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, -170, 0.5, -90) }):Play()
+    TweenService:Create(panel, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) }):Play()
 end
 
+local function resizeContent(width, height)
+    WIDTH, HEIGHT = width, height
+    SIDEBAR = width < 500 and 112 or 156
+    content.Size = UDim2.fromOffset(width, height)
+    sidebar.Size = UDim2.new(0, SIDEBAR, 1, 0)
+    topBar.Size = UDim2.new(1, -SIDEBAR - 1, 0, 48)
+    topBar.Position = UDim2.fromOffset(SIDEBAR + 1, 0)
+    headerBorder.Size = UDim2.new(1, -SIDEBAR - 1, 0, 1)
+    headerBorder.Position = UDim2.fromOffset(SIDEBAR + 1, 48)
+    pages.Size = UDim2.new(1, -SIDEBAR - 1, 1, -49)
+    pages.Position = UDim2.fromOffset(SIDEBAR + 1, 49)
+    windowTitle.TextSize = width < 500 and 14 or 16
+    windowTitle.Size = UDim2.new(1, width < 500 and -24 or -32, 0, 18)
+    windowTitle.Position = UDim2.fromOffset(width < 500 and 12 or 16, 14)
+    windowSubtitle.Size = UDim2.new(1, width < 500 and -24 or -32, 0, 14)
+    windowSubtitle.Position = UDim2.fromOffset(width < 500 and 12 or 16, 33)
+    if popup then popup.Panel.Size = UDim2.fromOffset(math.min(340, width - 32), 180) end
+end
 
 local function register(id, kind, value, callback)
     assert(type(id) == "string" and id ~= "" and not Hub.Controls[id], "Control ID must be unique: " .. tostring(id))
@@ -1565,23 +1759,6 @@ end
 Hub.Screen, Hub.Frame, Hub.Theme = screen, window, Theme
 
 
-local dragStart, startPosition
-beginDrag = function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragStart = input.Position
-        startPosition = window.Position
-    end
-end
-track(topBar.InputBegan:Connect(beginDrag))
-track(UserInputService.InputChanged:Connect(function(input)
-    if dragStart and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        window.Position = UDim2.fromOffset(math.floor(startPosition.X.Offset + delta.X), math.floor(startPosition.Y.Offset + delta.Y))
-    end
-end))
-track(UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragStart = nil end
-end))
 local bubble = create("TextButton", {
     Position = config.LauncherPosition or UDim2.fromOffset(22, 104),
     Size = UDim2.fromOffset(52, 52),
@@ -1597,9 +1774,27 @@ Components.Launcher(bubble, bubbleIcon, TweenService, track, function(button, la
 end, nil, Theme)
 local menu = Components.MenuTransition(TweenService, window, content, bubble, Theme, function() return popup end, UDim2.fromOffset(WIDTH, HEIGHT), config.AutoShow ~= false)
 Hub.Menu, Hub.LauncherButton = menu, bubble
+local layout = Components.Responsive(screen, window, menu, config, track, resizeContent)
+local drag = Components.Drag(UserInputService, track, layout.Position, layout.Move, menu.CanDrag)
+Hub.Layout, Hub.Drag = layout, drag
+beginDrag = drag.Begin
+local function dragHandle(parent, name, size)
+    local handle = create("TextButton", {
+        Name = name,
+        Size = size,
+        BackgroundTransparency = 1,
+        AutoButtonColor = false,
+        Text = "",
+        ZIndex = 3,
+        Parent = parent,
+    })
+    track(handle.InputBegan:Connect(beginDrag))
+end
+dragHandle(header, "TitleDragHandle", UDim2.fromScale(1, 1))
+dragHandle(topBar, "TopBarDragHandle", UDim2.new(1, TOUCH and -100 or -84, 1, 0))
 Hub.LauncherControls = Components.LauncherControls(bubble, UserInputService, track, function() menu.SetOpen(true) end)
-track(minimizeButton.MouseButton1Click:Connect(function() menu.SetOpen(false) end))
-track(closeButton.MouseButton1Click:Connect(function() Hub:Unload() end))
+track(minimizeButton.Activated:Connect(function() menu.SetOpen(false) end))
+track(closeButton.Activated:Connect(function() Hub:Unload() end))
 track(UserInputService.InputBegan:Connect(function(input, processed)
     if processed or UserInputService:GetFocusedTextBox() then return end
     if input.KeyCode == (config.ToggleKeybind or Enum.KeyCode.RightShift) then menu.Toggle()
@@ -1613,6 +1808,7 @@ function Hub:Toggle() menu.Toggle() return self end
 function Hub:IsOpen() return menu.IsOpen() end
 function Hub:Ready()
     if not self.Active or self.Loaded then return self end
+    layout.Refresh()
     self.Loaded = true
     if config.ShowDiscordPrompt then
         self:ShowDiscordPrompt()

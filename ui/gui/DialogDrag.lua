@@ -1,4 +1,4 @@
-return function(create, track, beginDrag)
+return function(create, track, beginDrag, touch)
     local function addHandle(parent, size)
         if parent:FindFirstChild("DiscordDragHandle") then
             return
@@ -15,7 +15,7 @@ return function(create, track, beginDrag)
         track(handle.InputBegan:Connect(beginDrag))
     end
     return function(overlay, panel)
-        addHandle(overlay, UDim2.new(1, -84, 0, 48))
+        addHandle(overlay, UDim2.new(1, touch and -100 or -84, 0, 48))
         addHandle(panel, UDim2.new(1, -56, 0, 68))
     end
 end

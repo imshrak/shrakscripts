@@ -1,19 +1,24 @@
-return function(create, text, corner, stroke, icon, track, tween, Theme, card, cardLabels, attachDismiss)
+return function(create, text, corner, stroke, icon, track, tween, Theme, card, cardLabels, attachDismiss, touch)
     return function(tab, title, getOptions, getValue, onChange)
-        local HEAD, ROW = 42, 28
+        local HEAD, ROW = touch and 56 or 42, touch and 40 or 28
         local frame = card(tab, HEAD)
         frame.Name = "SingleSelect"
         frame.ClipsDescendants = true
-        cardLabels(frame, title)
+        local titleLabel = cardLabels(frame, title)
+        if touch then
+            titleLabel.Size = UDim2.new(1, -48, 0, 16)
+            titleLabel.Position = UDim2.fromOffset(14, 8)
+            titleLabel.TextWrapped = false
+        end
         local summary = text({
-            Size = UDim2.fromOffset(170, 16),
-            Position = UDim2.new(1, -206, 0, 13),
+            Size = touch and UDim2.new(1, -48, 0, 16) or UDim2.fromOffset(170, 16),
+            Position = touch and UDim2.fromOffset(14, 30) or UDim2.new(1, -206, 0, 13),
             TextColor3 = Theme.Muted,
-            TextXAlignment = Enum.TextXAlignment.Right,
+            TextXAlignment = touch and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right,
             TextTruncate = Enum.TextTruncate.AtEnd,
             Parent = frame,
         })
-        local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, 13), Theme.Muted, frame)
+        local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, HEAD / 2 - 8), Theme.Muted, frame)
         local head = create("TextButton", {
             Name = "ChoiceHeader",
             Size = UDim2.new(1, 0, 0, HEAD),
@@ -28,6 +33,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ScrollBarThickness = 2,
+            ScrollingDirection = Enum.ScrollingDirection.Y,
             ScrollBarImageColor3 = Theme.Border,
             CanvasSize = UDim2.new(),
             Parent = frame,
@@ -59,7 +65,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             if changed then
                 body:ClearAllChildren()
                 options, rows = latest, {}
-                body.Size = UDim2.new(1, -16, 0, math.min(#options, 6) * ROW)
+                body.Size = UDim2.new(1, -16, 0, math.min(#options, touch and 4 or 6) * ROW)
                 body.CanvasSize = UDim2.fromOffset(0, #options * ROW)
                 for index, option in ipairs(options) do
                     local row = create("TextButton", {
@@ -74,7 +80,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
                     row:SetAttribute("ChoiceValue", option.Value)
                     local box = create("Frame", {
                         Size = UDim2.fromOffset(14, 14),
-                        Position = UDim2.fromOffset(8, 7),
+                        Position = UDim2.fromOffset(8, (ROW - 14) / 2),
                         BackgroundColor3 = Theme.Surface,
                         Parent = row,
                     }, { corner(3), stroke(Theme.Faint) })
@@ -83,7 +89,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
                     rows[index] = { Box = box, Mark = mark }
                     track(row.MouseEnter:Connect(function() tween(row, { BackgroundTransparency = 0 }) end))
                     track(row.MouseLeave:Connect(function() tween(row, { BackgroundTransparency = 1 }) end))
-                    track(row.MouseButton1Click:Connect(function()
+                    track(row.Activated:Connect(function()
                         onChange(option.Value)
                         updateSelection()
                         setOpen(false)
@@ -92,7 +98,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             end
             updateSelection()
         end
-        track(head.MouseButton1Click:Connect(function()
+        track(head.Activated:Connect(function()
             if not open then refresh() end
             setOpen(not open)
         end))
