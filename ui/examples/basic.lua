@@ -1,6 +1,6 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/imshrak/shrakscripts/refs/heads/main/ui/Library.lua"))()
 
-local Window = Library:CreateWindow({ Id = "ShrakScriptsExample", Title = "My Script", Subtitle = "ShrakScripts UI" })
+local Window = Library:CreateWindow({ Id = "ShrakScriptsExample", Title = "My Script", Subtitle = "ShrakScripts UI", DeferShow = true })
 local Main = Window:AddTab("Main", "zap")
 Main:AddSection("Features")
 Main:AddToggle("Enabled", { Text = "Enabled", Default = false, Callback = function(value) print("Enabled:", value) end })
@@ -10,4 +10,5 @@ Main:AddDropdown("Items", { Text = "Items", Multi = true, Values = { "First", "S
 Main:AddButton({ Text = "Stop All", Callback = function() Window:StopAll() end })
 Main:AddButton({ Text = "Unload", Callback = function() Window:Unload() end })
 Window:OnUnload(function() print("My Script unloaded") end)
+Window:Ready()
 return Window

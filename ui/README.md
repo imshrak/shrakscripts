@@ -6,7 +6,7 @@ A reusable Roblox UI library with the ShrakScripts dark menu, sliding sidebar hi
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/imshrak/shrakscripts/refs/heads/main/ui/Library.lua"))()
-local Window = Library:CreateWindow({ Id = "MyScript", Title = "My Script" })
+local Window = Library:CreateWindow({ Id = "MyScript", Title = "My Script", DeferShow = true })
 local Main = Window:AddTab("Main", "zap")
 Main:AddSection("Features")
 Main:AddToggle("AutoFarm", {
@@ -16,7 +16,10 @@ Main:AddToggle("AutoFarm", {
         print("Auto Farm:", enabled)
     end,
 })
+Window:Ready()
 ```
+
+Use `DeferShow = true` and call `Window:Ready()` after adding every tab and control. The menu stays hidden throughout setup, including any game-data or asset loading.
 
 Run this in an executor with `game:HttpGet` and `loadstring`. The library loads its launcher PNG from this repository and caches it using `writefile` and `getcustomasset` when available. It falls back to an S letter if the custom image cannot be loaded. Menu icons use the IDs listed in [assets/icons.lua](assets/icons.lua), sourced from icons.rest.
 

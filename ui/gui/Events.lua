@@ -44,6 +44,17 @@ function Hub:Show() menu.SetOpen(true) return self end
 function Hub:Hide() menu.SetOpen(false) return self end
 function Hub:Toggle() menu.Toggle() return self end
 function Hub:IsOpen() return menu.IsOpen() end
+function Hub:Ready()
+    if not self.Active or self.Loaded then return self end
+    self.Loaded = true
+    if config.ShowDiscordPrompt then
+        self:ShowDiscordPrompt()
+        popup.Blur.Enabled = menu.IsOpen()
+        popup.Overlay.Visible = menu.IsOpen()
+    end
+    screen.Enabled = true
+    return self
+end
 Library.Windows[id] = Hub
-if config.ShowDiscordPrompt then task.defer(function() if Hub.Active then Hub:ShowDiscordPrompt() end end) end
+if not config.DeferShow then task.defer(function() Hub:Ready() end) end
 return Hub

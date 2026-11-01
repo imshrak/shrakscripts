@@ -94,6 +94,7 @@ local WIDTH, HEIGHT = config.Width or 560, config.Height or 400
 
 local screen = create("ScreenGui", {
     Name = id,
+    Enabled = false,
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,

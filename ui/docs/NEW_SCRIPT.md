@@ -6,7 +6,7 @@ Keep game behavior in your script and use ShrakScripts UI to display controls. C
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/imshrak/shrakscripts/refs/heads/main/ui/Library.lua"))()
-local Window = Library:CreateWindow({ Id = "MyGameScript", Title = "My Game" })
+local Window = Library:CreateWindow({ Id = "MyGameScript", Title = "My Game", DeferShow = true })
 local Main = Window:AddTab("Main", "zap")
 ```
 
@@ -50,6 +50,16 @@ Window:StopAll()
 ```
 
 SetValue updates the visuals and fires callbacks only when the value changes. Pass true as its second argument for a silent change. Use SetValue rather than assigning Value directly.
+
+## 5. Reveal the completed menu
+
+After creating every tab, control, and cleanup callback, finish setup with:
+
+```lua
+Window:Ready()
+```
+
+DeferShow keeps the UI hidden during setup, even when loading assets or game data yields. Ready reveals the complete menu and its optional Discord prompt.
 
 ## Optional Discord prompt
 

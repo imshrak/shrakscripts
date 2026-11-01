@@ -31,6 +31,7 @@ Optional fields:
 | Field | Purpose |
 | --- | --- |
 | `Position` | Expanded window position as a UDim2. Defaults to centered. |
+| `DeferShow` | Keep the entire UI hidden until Window:Ready() is called after setup. Default false. |
 | `Parent` | Parent for the ScreenGui. Defaults to gethui/CoreGui. |
 | `Theme` | Color3 overrides for Window, Sidebar, Surface, Hover, Border, Text, Muted, Faint, Accent, and OnAccent. |
 | `DiscordInvite` | Invite code or discord.gg URL. |
@@ -45,6 +46,7 @@ Window methods:
 | Method | Behavior |
 | --- | --- |
 | `Window:AddTab(title, icon)` | Create and return a tab. |
+| `Window:Ready()` | Finish setup and reveal the completed UI. Call after all controls when DeferShow is true. Repeated calls have no effect. |
 | `Window:SelectTab(nameOrTab)` | Select a tab and animate the sidebar highlight. |
 | `Window:Show()` / `Hide()` / `Toggle()` | Control the animated window/launcher transition. |
 | `Window:IsOpen()` | Return the requested visibility state. |
@@ -54,6 +56,8 @@ Window methods:
 | `Window:Unload()` | Run cleanup and remove the window and its connections. |
 
 `Window.Frame`, `Window.Screen`, `Window.LauncherButton`, and `Window.Theme` expose the underlying UI objects. `Window.Toggles`, `Window.Options`, and `Window.Controls` contain controls by ID.
+
+The ScreenGui stays disabled during construction and launcher-asset loading. With `DeferShow = true`, it also stays disabled while your script builds controls or waits for game data. Call `Window:Ready()` at the end of setup; the optional Discord prompt appears at that point too. Without DeferShow, the library reveals the UI on the next deferred task for compatibility with existing scripts.
 
 ## Tabs and sections
 

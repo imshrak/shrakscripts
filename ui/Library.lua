@@ -1,7 +1,7 @@
 local environment = getgenv and getgenv() or _G
 environment.ShrakScriptsUIWindows = environment.ShrakScriptsUIWindows or {}
 local Library = {
-    Version = "1.0.0",
+    Version = "1.0.1",
     Windows = environment.ShrakScriptsUIWindows,
     AssetCache = {},
     AssetBase = "https://raw.githubusercontent.com/imshrak/shrakscripts/refs/heads/main/ui/assets/",
@@ -648,6 +648,7 @@ local WIDTH, HEIGHT = config.Width or 560, config.Height or 400
 
 local screen = create("ScreenGui", {
     Name = id,
+    Enabled = false,
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -1610,8 +1611,19 @@ function Hub:Show() menu.SetOpen(true) return self end
 function Hub:Hide() menu.SetOpen(false) return self end
 function Hub:Toggle() menu.Toggle() return self end
 function Hub:IsOpen() return menu.IsOpen() end
+function Hub:Ready()
+    if not self.Active or self.Loaded then return self end
+    self.Loaded = true
+    if config.ShowDiscordPrompt then
+        self:ShowDiscordPrompt()
+        popup.Blur.Enabled = menu.IsOpen()
+        popup.Overlay.Visible = menu.IsOpen()
+    end
+    screen.Enabled = true
+    return self
+end
 Library.Windows[id] = Hub
-if config.ShowDiscordPrompt then task.defer(function() if Hub.Active then Hub:ShowDiscordPrompt() end end) end
+if not config.DeferShow then task.defer(function() Hub:Ready() end) end
 return Hub
 
 end
