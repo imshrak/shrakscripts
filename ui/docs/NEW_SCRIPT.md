@@ -2,6 +2,8 @@
 
 Keep game behavior in your script and use ShrakScripts UI to display controls. Copy [examples/basic.lua](../examples/basic.lua) as a starting point.
 
+For color pickers, keybinds, nested groups, themes and profiles, use [examples/customization.lua](../examples/customization.lua). Add `Window:AddThemeSection(Settings)` and `Window:AddConfigSection(Settings)` before Ready to provide the built-in customization panels. File profiles load only when explicitly requested. The library manages mouse unlocking while open; set `UnlockMouse = false` when your script already handles it.
+
 ## 1. Load and create a window
 
 ```lua

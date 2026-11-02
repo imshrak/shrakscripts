@@ -41,7 +41,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
     local serial = 0
     local tweens = {}
     local function animate(object, goal, duration, style, direction)
-        local animation = TweenService:Create(object, TweenInfo.new(duration, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), goal)
+        local animation = Theme:Tween(TweenService, object, TweenInfo.new(duration, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), goal)
         table.insert(tweens, animation)
         animation:Play()
         return animation
@@ -56,10 +56,10 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
     local function closedAppearance()
         window.Position = button.Position
         window.Size = button.Size
-        window.BackgroundColor3 = Theme.Surface
+        Theme:Set(window, "BackgroundColor3", Theme.Surface)
         window.BackgroundTransparency = button.BackgroundTransparency
         corner.CornerRadius = buttonCorner.CornerRadius
-        outline.Color = Theme.Border
+        Theme:Set(outline, "Color", Theme.Border)
         outline.Thickness = 1
         outline.Transparency = 0
     end
@@ -67,7 +67,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
     if desired then
         window.Size = expandedSize
         window.Position = openPosition
-        window.BackgroundColor3 = Theme.Window
+        Theme:Set(window, "BackgroundColor3", Theme.Window)
         corner.CornerRadius = UDim.new(0, 10)
         group.GroupTransparency = 0
         content.Visible = true
@@ -165,7 +165,7 @@ return function(TweenService, window, content, button, Theme, getPopup, expanded
         if desired then
             state = "open"
             window.Size, window.Position = size, position
-            window.BackgroundColor3 = Theme.Window
+            Theme:Set(window, "BackgroundColor3", Theme.Window)
             window.BackgroundTransparency = 0
             corner.CornerRadius = UDim.new(0, 10)
             group.GroupTransparency = 0

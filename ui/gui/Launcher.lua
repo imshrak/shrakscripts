@@ -2,13 +2,13 @@ return function(button, label, TweenService, track, applyLogo, logoData, Theme)
     local palette = Theme or { Surface = Color3.fromRGB(17, 17, 17), Hover = Color3.fromRGB(26, 26, 26), Border = Color3.fromRGB(38, 38, 38), Text = Color3.fromRGB(245, 245, 245) }
     button.Name = "MenuButton"
     button.Size = UDim2.fromOffset(52, 52)
-    button.BackgroundColor3 = palette.Surface
+    palette:Set(button, "BackgroundColor3", palette.Surface)
     button.BackgroundTransparency = 0
     button.BorderSizePixel = 0
     button.AutoButtonColor = false
     button:FindFirstChildWhichIsA("UICorner").CornerRadius = UDim.new(0, 16)
     local outline = button:FindFirstChildWhichIsA("UIStroke")
-    outline.Color = palette.Border
+    palette:Set(outline, "Color", palette.Border)
     outline.Thickness = 1
     outline.Transparency = 0
     label.Name = "LauncherLogo"
@@ -17,16 +17,16 @@ return function(button, label, TweenService, track, applyLogo, logoData, Theme)
     label.Font = Enum.Font.GothamBlack
     label.Text = "S"
     label.TextSize = 38
-    label.TextColor3 = palette.Text
+    palette:Set(label, "TextColor3", palette.Text)
     label.Visible = true
     local mark = applyLogo and applyLogo(button, label, logoData) or label
-    if mark:IsA("ImageLabel") then mark.ImageColor3 = palette.Text end
+    if mark:IsA("ImageLabel") then palette:Set(mark, "ImageColor3", palette.Text) end
 
     track(button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.12), { BackgroundColor3 = palette.Hover }):Play()
+        palette:Tween(TweenService, button, TweenInfo.new(0.12), { BackgroundColor3 = palette.Hover }):Play()
     end))
     track(button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.12), { BackgroundColor3 = palette.Surface }):Play()
+        palette:Tween(TweenService, button, TweenInfo.new(0.12), { BackgroundColor3 = palette.Surface }):Play()
     end))
     local function clampPosition()
         local canvas = button.Parent and button.Parent.AbsoluteSize

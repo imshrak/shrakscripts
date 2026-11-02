@@ -13,6 +13,7 @@ local function register(id, kind, value, callback)
 end
 
 local function fire(control)
+    for _, refresh in ipairs(control.Dependents or {}) do refresh() end
     Library:_Call(control.Callback, control.Value, control)
     for _, callback in ipairs(control.Changed) do Library:_Call(callback, control.Value, control) end
 end
@@ -124,7 +125,9 @@ function Tab:AddDropdown(id, options)
         control.Frame = frame
         function control:SetValue(value, quiet)
             local valid = false
-            for _, item in ipairs(normalize(options.Values)) do if item.Value == value then valid = true break end end
+            local choices = normalize(options.Values)
+            if value == nil and (#choices == 0 or options.AllowNull) then valid = true end
+            for _, item in ipairs(choices) do if item.Value == value then valid = true break end end
             assert(valid, "Unknown dropdown value: " .. tostring(value))
             local changed = self.Value ~= value
             self.Value = value
@@ -133,6 +136,13 @@ function Tab:AddDropdown(id, options)
             return self
         end
         function control:Refresh() refresh() return self end
+        function control:SetValues(values)
+            options.Values = values
+            local choices, found = normalize(values), false
+            for _, item in ipairs(choices) do if item.Value == self.Value then found = true break end end
+            if not found then self:SetValue(choices[1] and choices[1].Value or nil) else refresh() end
+            return self
+        end
     end
     control.Frame.Name = "Dropdown_" .. id
     if options.FireOnInit then fire(control) end
@@ -142,7 +152,7 @@ function Tab:AddButton(options, callback)
     if type(options) == "string" then options = { Text = options, Callback = callback } end
     assert(type(options) == "table" and type(options.Callback) == "function", "Button requires a callback")
     local button = {}
-    function button:Press() Library:_Call(options.Callback, self) return self end
+    function button:Press() if not self.Disabled then Library:_Call(options.Callback, self) end return self end
     button.Frame = addButton(self, options.Text or "Button", options.Description, function() button:Press() end)
     function button:SetText(value) self.Frame:FindFirstChildWhichIsA("TextLabel").Text = tostring(value) return self end
     return button
@@ -184,6 +194,7 @@ function Hub:OnUnload(callback)
 end
 function Hub:StopAll()
     for _, control in pairs(self.Toggles) do control:SetValue(false) end
+    for _, control in pairs(self.Options) do if control.Type == "Keybind" then control:SetActive(false) end end
     return self
 end
 function Hub:Unload()

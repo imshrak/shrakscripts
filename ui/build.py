@@ -2,11 +2,11 @@ from pathlib import Path
 import re
 
 root = Path(__file__).resolve().parent
-components = ["TabHighlight", "DropdownDismiss", "SingleSelect", "DialogDrag", "MenuTransition", "LauncherControls", "Launcher", "Assets", "Drag", "Responsive"]
+components = ["Theme", "TabHighlight", "DropdownDismiss", "SingleSelect", "DialogDrag", "MenuTransition", "LauncherControls", "Launcher", "Assets", "Drag", "Responsive"]
 source = '''local environment = getgenv and getgenv() or _G
 environment.ShrakScriptsUIWindows = environment.ShrakScriptsUIWindows or {}
 local Library = {
-    Version = "1.0.1",
+    Version = "1.1.0",
     Windows = environment.ShrakScriptsUIWindows,
     AssetCache = {},
     AssetBase = "https://raw.githubusercontent.com/imshrak/shrakscripts/refs/heads/main/ui/assets/",
@@ -23,7 +23,10 @@ for name in components:
     source += "Components." + name + " = (function()\n" + (root / "gui" / (name + ".lua")).read_text(encoding="utf-8") + "\nend)()\n"
 window = (root / "gui/Window.lua").read_text(encoding="utf-8")
 window = window.replace("__PUBLIC_API__", (root / "gui/Api.lua").read_text(encoding="utf-8"))
+window = window.replace("__ADVANCED_API__", (root / "gui/Controls.lua").read_text(encoding="utf-8"))
+window = window.replace("__PROFILES__", (root / "gui/Profiles.lua").read_text(encoding="utf-8"))
 window = window.replace("__WINDOW_EVENTS__", (root / "gui/Events.lua").read_text(encoding="utf-8"))
+window = window.replace("__WINDOW_EXTRAS__", (root / "gui/Extras.lua").read_text(encoding="utf-8"))
 source += "local createWindow = (function()\n" + window + "\nend)()\n"
 source += '''function Library:CreateWindow(config)
     return createWindow(self, config or {}, Components)
@@ -35,7 +38,7 @@ function Library:Unload()
 end
 return Library
 '''
-assert "__PUBLIC_API__" not in source and "__WINDOW_EVENTS__" not in source
+assert not re.search(r"__(?:PUBLIC_API|WINDOW_EVENTS|WINDOW_EXTRAS|ADVANCED_API|PROFILES)__", source)
 assert not re.search(r"\b(?:TapSimulator|RebirthService|Runtime\.)", source)
 assert not re.search(r"^\s*--", source, re.M)
 (root / "Library.lua").write_text(source, encoding="utf-8")

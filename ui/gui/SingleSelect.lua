@@ -45,8 +45,8 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             summary.Text = selected == nil and "Select" or tostring(selected)
             for index, option in ipairs(options) do
                 local active = option.Value == selected
-                rows[index].Box.BackgroundColor3 = active and Theme.Accent or Theme.Surface
-                rows[index].Box.UIStroke.Color = active and Theme.Accent or Theme.Faint
+                Theme:Set(rows[index].Box, "BackgroundColor3", active and Theme.Accent or Theme.Surface)
+                Theme:Set(rows[index].Box.UIStroke, "Color", active and Theme.Accent or Theme.Faint)
                 rows[index].Mark.Visible = active
                 if active then summary.Text = option.Name end
             end
@@ -102,7 +102,7 @@ return function(create, text, corner, stroke, icon, track, tween, Theme, card, c
             if not open then refresh() end
             setOpen(not open)
         end))
-        attachDismiss(frame, tab.Page, function() return open end, setOpen)
+        attachDismiss(frame, tab.ScrollPage or tab.Page, function() return open end, setOpen)
         refresh()
         return frame, refresh
     end

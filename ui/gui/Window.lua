@@ -2,7 +2,6 @@ return function(Library, config, Components)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local environment = getgenv and getgenv() or _G
 local id = config.Id or "ShrakScriptsUI"
@@ -34,6 +33,8 @@ for key, value in pairs(config.Theme or {}) do
     Theme[key] = value
 end
 
+local Colors = Components.Theme(Theme)
+
 local Fonts = {
     Regular = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Regular),
     Medium = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Medium),
@@ -42,11 +43,15 @@ local Fonts = {
 
 local function create(className, properties, children)
     local instance = Instance.new(className)
-    for key, value in pairs(properties) do
+    for key, value in pairs(Colors:Resolve(instance, properties)) do
         instance[key] = value
     end
     for _, child in ipairs(children or {}) do
         child.Parent = instance
+    end
+    if instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox") then
+        instance:SetAttribute("BaseTextSize", instance.TextSize)
+        if config.TextScale then instance.TextSize = math.round(instance.TextSize * config.TextScale) end
     end
     return instance
 end
@@ -67,13 +72,13 @@ local function text(properties)
     properties.BackgroundTransparency = 1
     properties.FontFace = properties.FontFace or Fonts.Regular
     properties.TextSize = properties.TextSize or 14
-    properties.TextColor3 = properties.TextColor3 or Theme.Text
+    properties.TextColor3 = properties.TextColor3 or Colors.Text
     properties.TextXAlignment = properties.TextXAlignment or Enum.TextXAlignment.Left
     return create("TextLabel", properties)
 end
 
 local function tween(instance, goal, duration)
-    TweenService:Create(instance, TweenInfo.new(duration or 0.14, Enum.EasingStyle.Quad), goal):Play()
+    Colors:Tween(TweenService, instance, TweenInfo.new(duration or 0.14, Enum.EasingStyle.Quad), goal):Play()
 end
 
 local Icons = Components.Icons
@@ -83,7 +88,7 @@ local function icon(name, size, position, color, parent)
         Position = position,
         BackgroundTransparency = 1,
         Image = Icons[name],
-        ImageColor3 = color or Theme.Muted,
+        ImageColor3 = color or Colors.Muted,
         ScaleType = Enum.ScaleType.Fit,
         Parent = parent,
     })
@@ -102,17 +107,17 @@ local screen = create("ScreenGui", {
     IgnoreGuiInset = true,
     ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-    Parent = config.Parent or (gethui and gethui() or CoreGui),
+    Parent = config.Parent or Players.LocalPlayer:WaitForChild("PlayerGui"),
 })
 
 local window = create("Frame", {
     Size = UDim2.fromOffset(WIDTH, HEIGHT),
     Position = config.Position or UDim2.fromOffset(math.floor((viewport.X - WIDTH) / 2), math.floor((viewport.Y - HEIGHT) / 2)),
-    BackgroundColor3 = Theme.Window,
+    BackgroundColor3 = Colors.Window,
     BorderSizePixel = 0,
     ClipsDescendants = true,
     Parent = screen,
-}, { corner(10), stroke(Theme.Border) })
+}, { corner(10), stroke(Colors.Border) })
 
 local content = create("Frame", {
     Size = UDim2.fromOffset(WIDTH, HEIGHT),
@@ -122,7 +127,7 @@ local content = create("Frame", {
 
 local sidebar = create("Frame", {
     Size = UDim2.new(0, SIDEBAR, 1, 0),
-    BackgroundColor3 = Theme.Sidebar,
+    BackgroundColor3 = Colors.Sidebar,
     BorderSizePixel = 0,
     Parent = content,
 }, { corner(10) })
@@ -130,7 +135,7 @@ local sidebar = create("Frame", {
 create("Frame", {
     Size = UDim2.new(0, 12, 1, 0),
     Position = UDim2.new(1, -12, 0, 0),
-    BackgroundColor3 = Theme.Sidebar,
+    BackgroundColor3 = Colors.Sidebar,
     BorderSizePixel = 0,
     Parent = sidebar,
 })
@@ -138,7 +143,7 @@ create("Frame", {
 create("Frame", {
     Size = UDim2.new(0, 1, 1, 0),
     Position = UDim2.new(1, 0, 0, 0),
-    BackgroundColor3 = Theme.Border,
+    BackgroundColor3 = Colors.Border,
     BorderSizePixel = 0,
     Parent = sidebar,
 })
@@ -163,7 +168,7 @@ local windowSubtitle = text({
     Size = UDim2.new(1, WIDTH < 500 and -24 or -32, 0, 14),
     Position = UDim2.fromOffset(WIDTH < 500 and 12 or 16, 33),
     TextSize = 12,
-    TextColor3 = Theme.Faint,
+    TextColor3 = Colors.Faint,
     Text = config.Subtitle or "ShrakScripts UI",
     TextTruncate = Enum.TextTruncate.AtEnd,
     Parent = header,
@@ -208,19 +213,19 @@ local function windowButton(offset, iconName, hoverColor)
     local button = create("TextButton", {
         Size = UDim2.fromOffset(TOUCH and 40 or 26, TOUCH and 40 or 26),
         Position = UDim2.new(1, offset, 0, TOUCH and 4 or 11),
-        BackgroundColor3 = Theme.Window,
+        BackgroundColor3 = Colors.Window,
         AutoButtonColor = false,
         Text = "",
         Parent = topBar,
     }, { corner(6) })
-    local glyph = icon(iconName, 16, UDim2.fromOffset(TOUCH and 12 or 5, TOUCH and 12 or 5), Theme.Muted, button)
+    local glyph = icon(iconName, 16, UDim2.fromOffset(TOUCH and 12 or 5, TOUCH and 12 or 5), Colors.Muted, button)
     track(button.MouseEnter:Connect(function()
-        tween(button, { BackgroundColor3 = Theme.Hover })
-        tween(glyph, { ImageColor3 = hoverColor or Theme.Text })
+        tween(button, { BackgroundColor3 = Colors.Hover })
+        tween(glyph, { ImageColor3 = hoverColor or Colors.Text })
     end))
     track(button.MouseLeave:Connect(function()
-        tween(button, { BackgroundColor3 = Theme.Window })
-        tween(glyph, { ImageColor3 = Theme.Muted })
+        tween(button, { BackgroundColor3 = Colors.Window })
+        tween(glyph, { ImageColor3 = Colors.Muted })
     end))
     return button
 end
@@ -231,7 +236,7 @@ local minimizeButton = windowButton(TOUCH and -92 or -68, "minus")
 local headerBorder = create("Frame", {
     Size = UDim2.new(1, -SIDEBAR - 1, 0, 1),
     Position = UDim2.fromOffset(SIDEBAR + 1, 48),
-    BackgroundColor3 = Theme.Border,
+    BackgroundColor3 = Colors.Border,
     BorderSizePixel = 0,
     Parent = content,
 })
@@ -244,16 +249,17 @@ local pages = create("Frame", {
 })
 
 local tabs = {}
-local moveTabHighlight = Components.TabHighlight(TweenService, Theme, tabList, track)
+local moveTabHighlight = Components.TabHighlight(TweenService, Colors, tabList, track)
 
 local function selectTab(target)
+    Hub.SelectedTab = target
     for _, tab in ipairs(tabs) do
         local active = tab == target
         tab.Page.Visible = active
         tab.Button.BackgroundTransparency = 1
-        tween(tab.Label, { TextColor3 = active and Theme.Text or Theme.Muted })
+        tween(tab.Label, { TextColor3 = active and Colors.Text or Colors.Muted })
         tab.Indicator.Visible = false
-        tween(tab.Icon, { ImageColor3 = active and Theme.Text or Theme.Muted })
+        tween(tab.Icon, { ImageColor3 = active and Colors.Text or Colors.Muted })
     end
     pageTitle.Text = target.Name
     moveTabHighlight(target)
@@ -266,7 +272,7 @@ local function addTab(name, iconName)
         BorderSizePixel = 0,
         ScrollBarThickness = 2,
         ScrollingDirection = Enum.ScrollingDirection.Y,
-        ScrollBarImageColor3 = Theme.Border,
+        ScrollBarImageColor3 = Colors.Border,
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         CanvasSize = UDim2.new(),
         Visible = false,
@@ -282,7 +288,7 @@ local function addTab(name, iconName)
     })
     local button = create("TextButton", {
         Size = UDim2.new(1, 0, 0, TOUCH and 44 or 34),
-        BackgroundColor3 = Theme.Hover,
+        BackgroundColor3 = Colors.Hover,
         BackgroundTransparency = 1,
         AutoButtonColor = false,
         Text = "",
@@ -292,19 +298,19 @@ local function addTab(name, iconName)
     local indicator = create("Frame", {
         Size = UDim2.fromOffset(2, 16),
         Position = UDim2.fromOffset(0, 9),
-        BackgroundColor3 = Theme.Accent,
+        BackgroundColor3 = Colors.Accent,
         BorderSizePixel = 0,
         Visible = false,
         Parent = button,
     }, { corner(1) })
-    local tabIcon = icon(iconName, 16, UDim2.new(0, 12, 0.5, -8), Theme.Muted, button)
+    local tabIcon = icon(iconName, 16, UDim2.new(0, 12, 0.5, -8), Colors.Muted, button)
     local label = text({
         Size = UDim2.new(1, -44, 1, 0),
         Position = UDim2.fromOffset(38, 0),
         FontFace = Fonts.Medium,
         TextSize = TOUCH and 13 or 14,
         TextTruncate = Enum.TextTruncate.AtEnd,
-        TextColor3 = Theme.Muted,
+        TextColor3 = Colors.Muted,
         Text = name,
         Parent = button,
     })
@@ -344,7 +350,7 @@ local function addSection(tab, title)
         Position = UDim2.new(0, 2, 1, -16),
         FontFace = Fonts.Bold,
         TextSize = 12,
-        TextColor3 = Theme.Faint,
+        TextColor3 = Colors.Faint,
         Text = string.upper(title),
         Parent = holder,
     })
@@ -353,11 +359,11 @@ end
 local function card(tab, height)
     local frame = create("Frame", {
         Size = UDim2.new(1, 0, 0, height),
-        BackgroundColor3 = Theme.Surface,
+        BackgroundColor3 = Colors.Surface,
         BorderSizePixel = 0,
         LayoutOrder = nextOrder(tab),
         Parent = tab.Page,
-    }, { corner(8), stroke(Theme.Border) })
+    }, { corner(8), stroke(Colors.Border) })
     return frame
 end
 
@@ -377,7 +383,7 @@ local function cardLabels(frame, title, description)
             Size = UDim2.new(1, -90, 0, 14),
             Position = UDim2.fromOffset(14, 26),
             TextSize = 12,
-            TextColor3 = Theme.Muted,
+            TextColor3 = Colors.Muted,
             Text = description,
             TextTruncate = Enum.TextTruncate.AtEnd,
             Parent = frame,
@@ -394,13 +400,13 @@ local function addToggle(tab, title, onChange)
     local switch = create("Frame", {
         Size = UDim2.fromOffset(34, 18),
         Position = UDim2.new(1, -48, 0.5, -9),
-        BackgroundColor3 = Theme.Border,
+        BackgroundColor3 = Colors.Border,
         Parent = frame,
     }, { round() })
     local knob = create("Frame", {
         Size = UDim2.fromOffset(14, 14),
         Position = UDim2.fromOffset(2, 2),
-        BackgroundColor3 = Theme.Muted,
+        BackgroundColor3 = Colors.Muted,
         Parent = switch,
     }, { round() })
     local hitbox = create("TextButton", {
@@ -412,10 +418,10 @@ local function addToggle(tab, title, onChange)
     local enabled = false
     local function set(value)
         enabled = value
-        tween(switch, { BackgroundColor3 = value and Theme.Accent or Theme.Border })
+        tween(switch, { BackgroundColor3 = value and Colors.Accent or Colors.Border })
         tween(knob, {
             Position = UDim2.fromOffset(value and 18 or 2, 2),
-            BackgroundColor3 = value and Theme.OnAccent or Theme.Muted,
+            BackgroundColor3 = value and Colors.OnAccent or Colors.Muted,
         })
         onChange(value)
     end
@@ -423,10 +429,10 @@ local function addToggle(tab, title, onChange)
         set(not enabled)
     end))
     track(hitbox.MouseEnter:Connect(function()
-        tween(frame, { BackgroundColor3 = Theme.Hover })
+        tween(frame, { BackgroundColor3 = Colors.Hover })
     end))
     track(hitbox.MouseLeave:Connect(function()
-        tween(frame, { BackgroundColor3 = Theme.Surface })
+        tween(frame, { BackgroundColor3 = Colors.Surface })
     end))
     local function reset()
         if enabled then
@@ -439,6 +445,7 @@ end
 
 
 local function addSlider(tab, title, min, max, value, onChange, rounding)
+    local scrollPage = tab.ScrollPage or tab.Page
     local frame = card(tab, TOUCH and 66 or 58)
     local titleLabel = cardLabels(frame, title)
     titleLabel.Size = UDim2.new(1, -100, 0, 16)
@@ -448,7 +455,7 @@ local function addSlider(tab, title, min, max, value, onChange, rounding)
         Size = UDim2.fromOffset(80, 16),
         Position = UDim2.new(1, -94, 0, 13),
         FontFace = Fonts.Medium,
-        TextColor3 = Theme.Muted,
+        TextColor3 = Colors.Muted,
         TextXAlignment = Enum.TextXAlignment.Right,
         Text = tostring(value),
         Parent = frame,
@@ -456,22 +463,22 @@ local function addSlider(tab, title, min, max, value, onChange, rounding)
     local bar = create("Frame", {
         Size = UDim2.new(1, -28, 0, 4),
         Position = UDim2.fromOffset(14, 40),
-        BackgroundColor3 = Theme.Border,
+        BackgroundColor3 = Colors.Border,
         BorderSizePixel = 0,
         Parent = frame,
     }, { round() })
     local fill = create("Frame", {
         Size = UDim2.fromScale((value - min) / (max - min), 1),
-        BackgroundColor3 = Theme.Accent,
+        BackgroundColor3 = Colors.Accent,
         BorderSizePixel = 0,
         Parent = bar,
     }, { round() })
     local knob = create("Frame", {
         Size = UDim2.fromOffset(12, 12),
         Position = UDim2.new((value - min) / (max - min), -6, 0.5, -6),
-        BackgroundColor3 = Theme.Accent,
+        BackgroundColor3 = Colors.Accent,
         Parent = bar,
-    }, { round(), stroke(Theme.Window, 2) })
+    }, { round(), stroke(Colors.Window, 2) })
     local hitbox = create("TextButton", {
         Size = UDim2.new(1, 0, 0, TOUCH and 40 or 24),
         Position = UDim2.fromOffset(0, TOUCH and 26 or 30),
@@ -493,8 +500,8 @@ local function addSlider(tab, title, min, max, value, onChange, rounding)
     track(hitbox.InputBegan:Connect(function(input)
         if not dragInput and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
             dragInput = input
-            scrolling = tab.Page.ScrollingEnabled
-            tab.Page.ScrollingEnabled = false
+            scrolling = scrollPage.ScrollingEnabled
+            scrollPage.ScrollingEnabled = false
             update(input.Position.X)
         end
     end))
@@ -506,11 +513,11 @@ local function addSlider(tab, title, min, max, value, onChange, rounding)
     track(UserInputService.InputEnded:Connect(function(input)
         if dragInput and (input == dragInput or dragInput.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseButton1) then
             dragInput = nil
-            tab.Page.ScrollingEnabled = scrolling
+            scrollPage.ScrollingEnabled = scrolling
         end
     end))
     track(UserInputService.WindowFocusReleased:Connect(function()
-        if dragInput then dragInput = nil tab.Page.ScrollingEnabled = scrolling end
+        if dragInput then dragInput = nil scrollPage.ScrollingEnabled = scrolling end
     end))
     local function setValue(result)
         local scale = 10 ^ (rounding or 0)
@@ -538,12 +545,12 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
     local summary = text({
         Size = TOUCH and UDim2.new(1, -48, 0, 16) or UDim2.fromOffset(170, 16),
         Position = TOUCH and UDim2.fromOffset(14, 30) or UDim2.new(1, -206, 0, 13),
-        TextColor3 = Theme.Muted,
+        TextColor3 = Colors.Muted,
         TextXAlignment = TOUCH and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right,
         TextTruncate = Enum.TextTruncate.AtEnd,
         Parent = frame,
     })
-    local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, HEAD / 2 - 8), Theme.Muted, frame)
+    local chevron = icon("chevronDown", 16, UDim2.new(1, -30, 0, HEAD / 2 - 8), Colors.Muted, frame)
     local headButton = create("TextButton", {
         Size = UDim2.new(1, 0, 0, HEAD),
         BackgroundTransparency = 1,
@@ -553,7 +560,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
     create("Frame", {
         Size = UDim2.new(1, -28, 0, 1),
         Position = UDim2.fromOffset(14, HEAD),
-        BackgroundColor3 = Theme.Border,
+        BackgroundColor3 = Colors.Border,
         BorderSizePixel = 0,
         Parent = frame,
     })
@@ -563,8 +570,8 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         for _, option in ipairs(options) do
             local on = selected[option.Name] == true
             local check = checks[option.Name]
-            check.Box.BackgroundColor3 = on and Theme.Accent or Theme.Surface
-            check.Box.UIStroke.Color = on and Theme.Accent or Theme.Faint
+            Colors:Set(check.Box, "BackgroundColor3", on and Colors.Accent or Colors.Surface)
+            Colors:Set(check.Box.UIStroke, "Color", on and Colors.Accent or Colors.Faint)
             check.Mark.Visible = on
             if on then
                 table.insert(names, option.Name)
@@ -576,7 +583,7 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         local row = create("TextButton", {
             Size = UDim2.new(1, -16, 0, ROW),
             Position = UDim2.fromOffset(8, HEAD + 6 + (index - 1) * ROW),
-            BackgroundColor3 = Theme.Hover,
+            BackgroundColor3 = Colors.Hover,
             BackgroundTransparency = 1,
             AutoButtonColor = false,
             Text = "",
@@ -585,15 +592,15 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         local box = create("Frame", {
             Size = UDim2.fromOffset(14, 14),
             Position = UDim2.fromOffset(8, (ROW - 14) / 2),
-            BackgroundColor3 = Theme.Surface,
+            BackgroundColor3 = Colors.Surface,
             Parent = row,
-        }, { corner(3), stroke(Theme.Faint) })
-        local mark = icon("check", 12, UDim2.fromOffset(1, 1), Theme.OnAccent, box)
+        }, { corner(3), stroke(Colors.Faint) })
+        local mark = icon("check", 12, UDim2.fromOffset(1, 1), Colors.OnAccent, box)
         mark.Visible = false
         create("Frame", {
             Size = UDim2.fromOffset(6, 6),
             Position = UDim2.fromOffset(32, (ROW - 6) / 2),
-            BackgroundColor3 = option.Color or Theme.Muted,
+            BackgroundColor3 = option.Color or Colors.Muted,
             Parent = row,
         }, { round() })
         text({
@@ -619,11 +626,11 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         local button = create("TextButton", {
             Size = UDim2.fromOffset(64, TOUCH and 40 or 24),
             Position = UDim2.fromOffset(x, HEAD + 10 + #options * ROW),
-            BackgroundColor3 = Theme.Hover,
+            BackgroundColor3 = Colors.Hover,
             AutoButtonColor = false,
             FontFace = Fonts.Medium,
             TextSize = 13,
-            TextColor3 = Theme.Text,
+            TextColor3 = Colors.Text,
             Text = label,
             Parent = frame,
         }, { corner(5) })
@@ -647,17 +654,22 @@ local function addMultiSelect(tab, title, options, selected, emptyText, onChange
         tween(frame, { Size = UDim2.new(1, 0, 0, open and HEAD + listHeight or HEAD) }, 0.18)
         tween(chevron, { Rotation = open and 180 or 0 }, 0.18)
     end))
+    Components.DropdownDismiss(UserInputService, track)(frame, tab.ScrollPage or tab.Page, function() return open end, function(value)
+        open = value
+        tween(frame, { Size = UDim2.new(1, 0, 0, open and HEAD + listHeight or HEAD) }, 0.18)
+        tween(chevron, { Rotation = open and 180 or 0 }, 0.18)
+    end)
     refresh()
     return frame, refresh
 end
 
 local attachDropdownDismiss = Components.DropdownDismiss(UserInputService, track)
-local addSingleSelect = Components.SingleSelect(create, text, corner, stroke, icon, track, tween, Theme, card, cardLabels, attachDropdownDismiss, TOUCH)
+local addSingleSelect = Components.SingleSelect(create, text, corner, stroke, icon, track, tween, Colors, card, cardLabels, attachDropdownDismiss, TOUCH)
 
 local function addButton(tab, title, description, callback)
     local frame = card(tab, TOUCH and (description and 58 or 48) or (description and 50 or 42))
     cardLabels(frame, title, description)
-    icon("chevronRight", 16, UDim2.new(1, -30, 0.5, -8), Theme.Muted, frame)
+    icon("chevronRight", 16, UDim2.new(1, -30, 0.5, -8), Colors.Muted, frame)
     local hitbox = create("TextButton", {
         Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
@@ -665,10 +677,10 @@ local function addButton(tab, title, description, callback)
         Parent = frame,
     })
     track(hitbox.MouseEnter:Connect(function()
-        tween(frame, { BackgroundColor3 = Theme.Hover })
+        tween(frame, { BackgroundColor3 = Colors.Hover })
     end))
     track(hitbox.MouseLeave:Connect(function()
-        tween(frame, { BackgroundColor3 = Theme.Surface })
+        tween(frame, { BackgroundColor3 = Colors.Surface })
     end))
     track(hitbox.Activated:Connect(callback))
     return frame
@@ -732,23 +744,23 @@ local function showDiscordPopup()
         Size = UDim2.fromOffset(math.min(340, WIDTH - 32), 180),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0.5, 12),
-        BackgroundColor3 = Theme.Window,
+        BackgroundColor3 = Colors.Window,
         ZIndex = 11,
         Parent = overlay,
-    }, { corner(12), stroke(Theme.Border) }), "BackgroundTransparency")
+    }, { corner(12), stroke(Colors.Border) }), "BackgroundTransparency")
 
     attachDialogDrag(overlay, panel)
 
     local dismiss = create("TextButton", {
         Size = UDim2.fromOffset(TOUCH and 40 or 28, TOUCH and 40 or 28),
         Position = UDim2.new(1, TOUCH and -48 or -44, 0, TOUCH and 8 or 16),
-        BackgroundColor3 = Theme.Window,
+        BackgroundColor3 = Colors.Window,
         AutoButtonColor = false,
         Text = "",
         ZIndex = 12,
         Parent = panel,
     }, { corner(6) })
-    local dismissIcon = icon("x", 16, UDim2.fromOffset(TOUCH and 12 or 6, TOUCH and 12 or 6), Theme.Muted, dismiss)
+    local dismissIcon = icon("x", 16, UDim2.fromOffset(TOUCH and 12 or 6, TOUCH and 12 or 6), Colors.Muted, dismiss)
     dismissIcon.ZIndex = 13
     faded(dismissIcon, "ImageTransparency")
 
@@ -764,7 +776,7 @@ local function showDiscordPopup()
     faded(text({
         Size = UDim2.new(1, -48, 0, 18),
         Position = UDim2.fromOffset(24, 48),
-        TextColor3 = Theme.Muted,
+        TextColor3 = Colors.Muted,
         Text = "Updates, new scripts and support.",
         ZIndex = 12,
         Parent = panel,
@@ -773,12 +785,12 @@ local function showDiscordPopup()
     local field = faded(create("TextButton", {
         Size = UDim2.new(1, -48, 0, 36),
         Position = UDim2.fromOffset(24, 80),
-        BackgroundColor3 = Theme.Surface,
+        BackgroundColor3 = Colors.Surface,
         AutoButtonColor = false,
         Text = "",
         ZIndex = 12,
         Parent = panel,
-    }, { corner(8), stroke(Theme.Border) }), "BackgroundTransparency")
+    }, { corner(8), stroke(Colors.Border) }), "BackgroundTransparency")
     faded(text({
         Size = UDim2.new(1, -50, 1, 0),
         Position = UDim2.fromOffset(14, 0),
@@ -787,7 +799,7 @@ local function showDiscordPopup()
         ZIndex = 13,
         Parent = field,
     }), "TextTransparency")
-    local fieldCopy = icon("copy", 16, UDim2.new(1, -28, 0, 10), Theme.Muted, field)
+    local fieldCopy = icon("copy", 16, UDim2.new(1, -28, 0, 10), Colors.Muted, field)
     fieldCopy.ZIndex = 13
     faded(fieldCopy, "ImageTransparency")
 
@@ -795,22 +807,22 @@ local function showDiscordPopup()
         local button = create("TextButton", {
             Size = UDim2.new(0.5, -30, 0, 36),
             Position = UDim2.new(x, x == 0 and 24 or 6, 1, -54),
-            BackgroundColor3 = primary and Theme.Accent or Theme.Surface,
+            BackgroundColor3 = primary and Colors.Accent or Colors.Surface,
             AutoButtonColor = false,
             FontFace = Fonts.Bold,
         TextSize = TOUCH and 13 or 14,
-            TextColor3 = primary and Theme.OnAccent or Theme.Text,
+            TextColor3 = primary and Colors.OnAccent or Colors.Text,
             Text = label,
             ZIndex = 12,
             Parent = panel,
-        }, { corner(8), stroke(primary and Theme.Accent or Theme.Border) })
+        }, { corner(8), stroke(primary and Colors.Accent or Colors.Border) })
         faded(button, "BackgroundTransparency")
         faded(button, "TextTransparency")
         track(button.MouseEnter:Connect(function()
-            tween(button, { BackgroundColor3 = primary and Theme.Muted or Theme.Hover })
+            tween(button, { BackgroundColor3 = primary and Colors.Muted or Colors.Hover })
         end))
         track(button.MouseLeave:Connect(function()
-            tween(button, { BackgroundColor3 = primary and Theme.Accent or Theme.Surface })
+            tween(button, { BackgroundColor3 = primary and Colors.Accent or Colors.Surface })
         end))
         return button
     end
@@ -822,7 +834,7 @@ local function showDiscordPopup()
         local copied = copyInvite()
         copyChoice.Text = copied and "Copied" or "Not supported"
         fieldCopy.Image = copied and Icons.copyCheck or Icons.copy
-        fieldCopy.ImageColor3 = copied and Theme.Text or Theme.Muted
+        Colors:Set(fieldCopy, "ImageColor3", copied and Colors.Text or Colors.Muted)
     end
 
     track(closeChoice.Activated:Connect(closeDiscordPopup))
@@ -830,18 +842,18 @@ local function showDiscordPopup()
     track(copyChoice.Activated:Connect(onCopy))
     track(field.Activated:Connect(onCopy))
     track(dismiss.MouseEnter:Connect(function()
-        tween(dismiss, { BackgroundColor3 = Theme.Hover })
-        tween(dismissIcon, { ImageColor3 = Theme.Text })
+        tween(dismiss, { BackgroundColor3 = Colors.Hover })
+        tween(dismissIcon, { ImageColor3 = Colors.Text })
     end))
     track(dismiss.MouseLeave:Connect(function()
-        tween(dismiss, { BackgroundColor3 = Theme.Window })
-        tween(dismissIcon, { ImageColor3 = Theme.Muted })
+        tween(dismiss, { BackgroundColor3 = Colors.Window })
+        tween(dismissIcon, { ImageColor3 = Colors.Muted })
     end))
     track(field.MouseEnter:Connect(function()
-        tween(field, { BackgroundColor3 = Theme.Hover })
+        tween(field, { BackgroundColor3 = Colors.Hover })
     end))
     track(field.MouseLeave:Connect(function()
-        tween(field, { BackgroundColor3 = Theme.Surface })
+        tween(field, { BackgroundColor3 = Colors.Surface })
     end))
 
     popup = { Overlay = overlay, Panel = panel, Blur = blur, Fade = fade }
@@ -861,7 +873,8 @@ local function resizeContent(width, height)
     headerBorder.Position = UDim2.fromOffset(SIDEBAR + 1, 48)
     pages.Size = UDim2.new(1, -SIDEBAR - 1, 1, -49)
     pages.Position = UDim2.fromOffset(SIDEBAR + 1, 49)
-    windowTitle.TextSize = width < 500 and 14 or 16
+    windowTitle:SetAttribute("BaseTextSize", width < 500 and 14 or 16)
+    windowTitle.TextSize = math.round((width < 500 and 14 or 16) * (config.TextScale or 1))
     windowTitle.Size = UDim2.new(1, width < 500 and -24 or -32, 0, 18)
     windowTitle.Position = UDim2.fromOffset(width < 500 and 12 or 16, 14)
     windowSubtitle.Size = UDim2.new(1, width < 500 and -24 or -32, 0, 14)
@@ -870,6 +883,10 @@ local function resizeContent(width, height)
 end
 
 __PUBLIC_API__
+
+__ADVANCED_API__
+
+__PROFILES__
 
 __WINDOW_EVENTS__
 end

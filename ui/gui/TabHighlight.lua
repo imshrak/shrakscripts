@@ -13,7 +13,7 @@ return function(TweenService, Theme, tabList, track)
 
     local background = Instance.new("Frame")
     background.Name = "TabButtonHighlight"
-    background.BackgroundColor3 = Theme.Hover
+    Theme:Set(background, "BackgroundColor3", Theme.Hover)
     background.BorderSizePixel = 0
     background.Visible = false
     background.Parent = backgroundLayer
@@ -31,7 +31,7 @@ return function(TweenService, Theme, tabList, track)
 
     local highlight = Instance.new("Frame")
     highlight.Name = "TabHighlight"
-    highlight.BackgroundColor3 = Theme.Accent
+    Theme:Set(highlight, "BackgroundColor3", Theme.Accent)
     highlight.Size = UDim2.fromOffset(2, 16)
     highlight.BorderSizePixel = 0
     highlight.Visible = false

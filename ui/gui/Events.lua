@@ -1,17 +1,17 @@
 local bubble = create("TextButton", {
     Position = config.LauncherPosition or UDim2.fromOffset(22, 104),
     Size = UDim2.fromOffset(52, 52),
-    BackgroundColor3 = Theme.Surface,
+    BackgroundColor3 = Colors.Surface,
     AutoButtonColor = false,
     Text = "",
     Visible = false,
     Parent = screen,
-}, { corner(16), stroke(Theme.Border) })
+}, { corner(16), stroke(Colors.Border) })
 local bubbleIcon = text({ Size = UDim2.fromScale(1, 1), FontFace = Fonts.Bold, TextSize = 38, TextXAlignment = Enum.TextXAlignment.Center, Text = "S", Parent = bubble })
 Components.Launcher(bubble, bubbleIcon, TweenService, track, function(button, label)
     return Components.Assets(button, label, Library, config)
-end, nil, Theme)
-local menu = Components.MenuTransition(TweenService, window, content, bubble, Theme, function() return popup end, UDim2.fromOffset(WIDTH, HEIGHT), config.AutoShow ~= false)
+end, nil, Colors)
+local menu = Components.MenuTransition(TweenService, window, content, bubble, Colors, function() return popup end, UDim2.fromOffset(WIDTH, HEIGHT), config.AutoShow ~= false)
 Hub.Menu, Hub.LauncherButton = menu, bubble
 local layout = Components.Responsive(screen, window, menu, config, track, resizeContent)
 local drag = Components.Drag(UserInputService, track, layout.Position, layout.Move, menu.CanDrag)
@@ -35,7 +35,7 @@ Hub.LauncherControls = Components.LauncherControls(bubble, UserInputService, tra
 track(minimizeButton.Activated:Connect(function() menu.SetOpen(false) end))
 track(closeButton.Activated:Connect(function() Hub:Unload() end))
 track(UserInputService.InputBegan:Connect(function(input, processed)
-    if processed or UserInputService:GetFocusedTextBox() then return end
+    if processed or Hub.BindingControl or UserInputService:GetFocusedTextBox() then return end
     if input.KeyCode == (config.ToggleKeybind or Enum.KeyCode.RightShift) then menu.Toggle()
     elseif input.KeyCode == (config.PanicKeybind or Enum.KeyCode.End) then
         if config.OnPanic then Library:_Call(config.OnPanic, Hub) else Hub:StopAll() end
@@ -57,6 +57,7 @@ function Hub:Ready()
     screen.Enabled = true
     return self
 end
+__WINDOW_EXTRAS__
 Library.Windows[id] = Hub
 if not config.DeferShow then task.defer(function() Hub:Ready() end) end
 return Hub
