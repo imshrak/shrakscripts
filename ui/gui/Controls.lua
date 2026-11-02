@@ -157,7 +157,7 @@ end
 local function keyName(value)
     if typeof(value) == "EnumItem" then value = value.Name end
     value = tostring(value or "None")
-    assert(value == "None" or Enum.KeyCode[value] or value:match("^MouseButton[123]$"), "Invalid keybind: " .. value)
+    assert(value == "None" or value:match("^MouseButton[123]$") or Enum.KeyCode[value], "Invalid keybind: " .. value)
     return value
 end
 function Tab:AddKeybind(id, options)

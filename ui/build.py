@@ -6,7 +6,7 @@ components = ["Theme", "TabHighlight", "DropdownDismiss", "SingleSelect", "Dialo
 source = '''local environment = getgenv and getgenv() or _G
 environment.ShrakScriptsUIWindows = environment.ShrakScriptsUIWindows or {}
 local Library = {
-    Version = "1.1.0",
+    Version = "1.1.1",
     Windows = environment.ShrakScriptsUIWindows,
     AssetCache = {},
     AssetBase = "https://raw.githubusercontent.com/imshrak/shrakscripts/refs/heads/main/ui/assets/",
